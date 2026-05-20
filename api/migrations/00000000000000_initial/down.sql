@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS issue_relations;
+DROP TABLE IF EXISTS issue_labels;
+DROP TABLE IF EXISTS issues;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS users;
