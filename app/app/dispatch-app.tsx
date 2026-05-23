@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  createIssue as apiCreateIssue,
+  listProjectIssues,
+  updateIssue as apiUpdateIssue,
+  type ApiIssue,
+  type ApiProject,
+  type ApiUser,
+} from "@/lib/api/client";
 
 type Status = "backlog" | "todo" | "in-progress" | "done" | "cancelled";
 type Priority = "urgent" | "high" | "medium" | "low" | "none";
@@ -45,208 +53,39 @@ type DocumentRecord = {
   body: string;
 };
 
-const USER: User = {
-  id: "u1",
-  name: "Alex Kim",
-  initials: "AK",
-  email: "alex@dispatch.app",
-};
+// ---- API → frontend type mappers ----
 
-const PROJECTS: Project[] = [
-  {
-    id: "p1",
-    key: "DSP",
-    name: "Dispatch",
-    color: "#5b5bd6",
-    subProjects: [
-      { id: "p1s1", key: "DSP", name: "API", color: "#2563eb", subProjects: [] },
-    ],
-  },
-  { id: "p2", key: "WEB", name: "Website", color: "#16a34a", subProjects: [] },
-];
+function mapApiUser(u: ApiUser): User {
+  return { id: u.id, name: u.name, initials: u.initials, email: u.email };
+}
 
-const INITIAL_ISSUES: Issue[] = [
-  {
-    id: "i1",
-    key: "DSP-1",
-    projectId: "p1",
-    parentId: null,
-    title: "Initialize repository and project structure",
-    status: "done",
-    priority: "high",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Set up the monorepo with packages for frontend and backend. Configure TypeScript, ESLint, and Prettier.\n\n## Tasks\n- [x] Create repository\n- [x] Configure TypeScript\n- [x] Set up linting\n- [x] Add CI pipeline",
-    createdAt: "2026-04-28",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i2",
-    key: "DSP-2",
-    projectId: "p1",
-    parentId: null,
-    title: "Design authentication flow",
-    status: "done",
-    priority: "high",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Design and implement the authentication system including login, signup, and password reset flows.",
-    createdAt: "2026-04-30",
-    blockedBy: [],
-    relatedTo: ["i1"],
-  },
-  {
-    id: "i3",
-    key: "DSP-3",
-    projectId: "p1",
-    parentId: null,
-    title: "Build issue list component",
-    status: "in-progress",
-    priority: "high",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Create the main issue list view with grouping, filtering, and sorting capabilities.",
-    createdAt: "2026-05-02",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i4",
-    key: "DSP-4",
-    projectId: "p1",
-    parentId: null,
-    title: "Issue detail panel with metadata editing",
-    status: "in-progress",
-    priority: "medium",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Create the right-side issue detail panel. Should support inline editing of all metadata fields.\n\n## Fields\n- Status\n- Priority\n- Labels\n- Assignee\n- Related to\n- Blocked by\n- Sub-issues",
-    createdAt: "2026-05-05",
-    blockedBy: ["i3"],
-    relatedTo: ["i3"],
-  },
-  {
-    id: "i5",
-    key: "DSP-5",
-    projectId: "p1",
-    parentId: null,
-    title: "Add keyboard shortcuts",
-    status: "todo",
-    priority: "medium",
-    labels: ["improvement"],
-    assignee: "u1",
-    body: "Implement keyboard shortcuts:\n- C: Create issue\n- Cmd+K: Command palette\n- Esc: Close panels",
-    createdAt: "2026-05-08",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i6",
-    key: "DSP-6",
-    projectId: "p1",
-    parentId: null,
-    title: "GitHub integration, link commits to issues",
-    status: "todo",
-    priority: "high",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Integrate with GitHub API to link commits and PRs to issues automatically when they reference issue keys.",
-    createdAt: "2026-05-10",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i7",
-    key: "DSP-7",
-    projectId: "p1",
-    parentId: null,
-    title: "Fix ordering bug in backlog view",
-    status: "backlog",
-    priority: "low",
-    labels: ["bug"],
-    assignee: null,
-    body: "Issues in the backlog view lose their manual ordering after page refresh.",
-    createdAt: "2026-05-12",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i8",
-    key: "DSP-8",
-    projectId: "p1",
-    parentId: null,
-    title: "Document all API endpoints",
-    status: "backlog",
-    priority: "low",
-    labels: ["docs"],
-    assignee: null,
-    body: "Write comprehensive documentation for all REST API endpoints using OpenAPI spec.",
-    createdAt: "2026-05-13",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i9",
-    key: "DSP-9",
-    projectId: "p1",
-    parentId: "i4",
-    title: "Sub-issue support in detail panel",
-    status: "todo",
-    priority: "medium",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Allow creating and linking sub-issues from the issue detail panel. Sub-issues appear indented in the list.",
-    createdAt: "2026-05-14",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i10",
-    key: "DSP-10",
-    projectId: "p1",
-    parentId: null,
-    title: "Mobile responsive layout",
-    status: "backlog",
-    priority: "low",
-    labels: ["improvement"],
-    assignee: null,
-    body: "Make the application responsive for mobile and tablet viewports.",
-    createdAt: "2026-05-15",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i11",
-    key: "WEB-1",
-    projectId: "p2",
-    parentId: null,
-    title: "Landing page design and implementation",
-    status: "in-progress",
-    priority: "high",
-    labels: ["feature"],
-    assignee: "u1",
-    body: "Design and implement the marketing landing page for Dispatch.",
-    createdAt: "2026-05-10",
-    blockedBy: [],
-    relatedTo: [],
-  },
-  {
-    id: "i12",
-    key: "WEB-2",
-    projectId: "p2",
-    parentId: null,
-    title: "SEO optimization",
-    status: "backlog",
-    priority: "medium",
-    labels: ["improvement"],
-    assignee: null,
-    body: "Add proper meta tags, structured data, and sitemap.",
-    createdAt: "2026-05-14",
-    blockedBy: ["i11"],
-    relatedTo: [],
-  },
-];
+function mapApiProject(p: ApiProject): Project {
+  return {
+    id: p.id,
+    key: p.key,
+    name: p.name,
+    color: p.color,
+    subProjects: p.sub_projects.map(mapApiProject),
+  };
+}
+
+function mapApiIssue(i: ApiIssue): Issue {
+  return {
+    id: i.id,
+    key: i.key,
+    projectId: i.project_id,
+    parentId: i.parent_id,
+    title: i.title,
+    status: i.status as Status,
+    priority: i.priority as Priority,
+    labels: i.labels as Label[],
+    assignee: i.assignee_id,
+    body: i.body,
+    createdAt: i.created_at,
+    blockedBy: i.blocked_by,
+    relatedTo: i.related_to,
+  };
+}
 
 const DOCUMENTS: DocumentRecord[] = [
   {
@@ -823,6 +662,8 @@ function IssueList({
   onSelectIssue,
   onCreateIssue,
   myIssues,
+  userId,
+  loading,
 }: {
   issues: Issue[];
   allIssues: Issue[];
@@ -831,6 +672,8 @@ function IssueList({
   onSelectIssue: (id: string) => void;
   onCreateIssue: (payload: { title: string; body: string; status: Status; priority: Priority; projectId: string }) => void;
   myIssues: boolean;
+  userId: string;
+  loading: boolean;
 }) {
   const [filter, setFilter] = useState<FilterId>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -846,7 +689,7 @@ function IssueList({
   }, []);
 
   const base = myIssues
-    ? issues.filter((issue) => issue.assignee === USER.id && !issue.parentId)
+    ? issues.filter((issue) => issue.assignee === userId && !issue.parentId)
     : issues.filter((issue) => issue.projectId === project.id && !issue.parentId);
 
   const filtered = filterIssues(base, filter);
@@ -893,17 +736,23 @@ function IssueList({
       </div>
 
       <div className="dispatch-scroll-panel">
-        {STATUSES.map((status) => (
-          <IssueGroup
-            key={status}
-            status={status}
-            issues={grouped[status]}
-            allIssues={allIssues}
-            selectedIssue={selectedIssue}
-            onSelectIssue={onSelectIssue}
-          />
-        ))}
-        {!filtered.length ? <div className="dispatch-empty-state">No issues</div> : null}
+        {loading ? (
+          <div className="dispatch-empty-state">Loading...</div>
+        ) : (
+          <>
+            {STATUSES.map((status) => (
+              <IssueGroup
+                key={status}
+                status={status}
+                issues={grouped[status]}
+                allIssues={allIssues}
+                selectedIssue={selectedIssue}
+                onSelectIssue={onSelectIssue}
+              />
+            ))}
+            {!filtered.length ? <div className="dispatch-empty-state">No issues</div> : null}
+          </>
+        )}
       </div>
 
       {createOpen ? <CreateIssueModal projectId={project.id} onClose={() => setCreateOpen(false)} onCreate={onCreateIssue} /> : null}
@@ -1393,22 +1242,65 @@ function SettingsView({
   return <IntegrationSettings />;
 }
 
-export function DispatchApp() {
-  const [user, setUser] = useState(USER);
-  const [issues, setIssues] = useState(INITIAL_ISSUES);
+export function DispatchApp({
+  initialUser,
+  initialProjects,
+}: {
+  initialUser: ApiUser;
+  initialProjects: ApiProject[];
+}) {
+  const [user, setUser] = useState<User>(() => mapApiUser(initialUser));
+  const [projects] = useState<Project[]>(() => initialProjects.map(mapApiProject));
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issuesLoading, setIssuesLoading] = useState(false);
   const [nav, setNav] = useState("issues");
-  const [selectedProject, setSelectedProject] = useState("p1");
+  const [selectedProject, setSelectedProject] = useState<string>(
+    initialProjects[0]?.id ?? "",
+  );
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
 
-  const project = PROJECTS.find((item) => item.id === selectedProject) ?? PROJECTS[0];
+  const project = projects.find((item) => item.id === selectedProject) ?? projects[0];
   const isMyIssues = nav === "my-issues";
   const isIssues = nav === "issues" || isMyIssues;
   const isDocs = nav === "documents";
   const isSettings = nav.startsWith("settings-");
 
+  useEffect(() => {
+    if (!isIssues || !selectedProject) return;
+
+    let cancelled = false;
+    setIssuesLoading(true);
+
+    const load = async () => {
+      try {
+        let loaded: Issue[];
+        if (isMyIssues) {
+          const results = await Promise.all(
+            projects.map((p) => listProjectIssues(p.id)),
+          );
+          loaded = results.flat().map(mapApiIssue);
+        } else {
+          loaded = (await listProjectIssues(selectedProject)).map(mapApiIssue);
+        }
+        if (!cancelled) setIssues(loaded);
+      } catch (err) {
+        console.error("Failed to load issues:", err);
+      } finally {
+        if (!cancelled) setIssuesLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  // projects is stable (never updated), intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject, isMyIssues]);
+
   const handleSelectIssue = (id: string) => setSelectedIssue((current) => (current === id ? null : id));
 
-  const handleCreateIssue = ({
+  const handleCreateIssue = async ({
     title,
     body,
     status,
@@ -1421,37 +1313,48 @@ export function DispatchApp() {
     priority: Priority;
     projectId: string;
   }) => {
-    const currentProject = PROJECTS.find((item) => item.id === projectId);
-    if (!currentProject) return;
-
-    const projectIssues = issues.filter((issue) => issue.projectId === projectId);
-    const maxNum = projectIssues.reduce((max, issue) => {
-      const num = Number.parseInt(issue.key.split("-")[1] ?? "0", 10);
-      return Math.max(max, Number.isNaN(num) ? 0 : num);
-    }, 0);
-
-    const newIssue: Issue = {
-      id: `i${Date.now()}`,
-      key: `${currentProject.key}-${maxNum + 1}`,
-      projectId,
-      parentId: null,
-      title,
-      body,
-      status,
-      priority,
-      labels: [],
-      assignee: USER.id,
-      createdAt: new Date().toISOString().split("T")[0] ?? "",
-      blockedBy: [],
-      relatedTo: [],
-    };
-
-    setIssues((current) => [newIssue, ...current]);
-    setSelectedIssue(newIssue.id);
+    try {
+      const created = await apiCreateIssue({
+        project_id: projectId,
+        title,
+        body,
+        status,
+        priority,
+        assignee_id: user.id,
+      });
+      const mapped = mapApiIssue(created);
+      setIssues((current) => [mapped, ...current]);
+      setSelectedIssue(mapped.id);
+    } catch (err) {
+      console.error("Failed to create issue:", err);
+    }
   };
 
   const handleUpdateIssue = (updated: Issue) => {
-    setIssues((current) => current.map((issue) => (issue.id === updated.id ? updated : issue)));
+    // Optimistic update
+    setIssues((current) =>
+      current.map((issue) => (issue.id === updated.id ? updated : issue)),
+    );
+    // Sync to API, then reconcile with server response
+    apiUpdateIssue(updated.id, {
+      title: updated.title,
+      status: updated.status,
+      priority: updated.priority,
+      labels: updated.labels,
+      body: updated.body,
+      assignee_id: updated.assignee,
+      parent_id: updated.parentId,
+    })
+      .then((result) => {
+        setIssues((current) =>
+          current.map((issue) =>
+            issue.id === result.id ? mapApiIssue(result) : issue,
+          ),
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to update issue:", err);
+      });
   };
 
   const handleSetNav = (nextNav: string) => {
@@ -1474,12 +1377,22 @@ export function DispatchApp() {
 
   const selectedIssueObj = selectedIssue ? issues.find((issue) => issue.id === selectedIssue) ?? null : null;
 
+  if (!project) {
+    return (
+      <div className="dispatch-app-shell">
+        <main className="dispatch-main-shell">
+          <div className="dispatch-empty-state">No projects found.</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="dispatch-app-shell">
       <Sidebar
         nav={nav}
         setNav={handleSetNav}
-        projects={PROJECTS}
+        projects={projects}
         selectedProject={selectedProject}
         setSelectedProject={handleSetProject}
         user={user}
@@ -1507,6 +1420,8 @@ export function DispatchApp() {
               onSelectIssue={handleSelectIssue}
               onCreateIssue={handleCreateIssue}
               myIssues={isMyIssues}
+              userId={user.id}
+              loading={issuesLoading}
             />
           )
         ) : null}
