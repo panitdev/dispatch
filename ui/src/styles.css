@@ -1,8 +1,7 @@
-
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -20,9 +19,25 @@ body {
   margin: 0;
 }
 
+button,
+a {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: var(--dispatch-font-sans, 'Geist Variable', sans-serif);
+  --font-serif: var(--dispatch-font-serif, ui-serif, Georgia, serif);
+  --font-mono: var(
+    --dispatch-font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    monospace
+  );
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -142,4 +157,78 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+.dispatch-theme {
+  --dispatch-font-sans:
+    'Pretendard Variable', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
+  --dispatch-font-serif: 'Noto Serif KR', 'Times New Roman', serif;
+  --dispatch-font-mono: 'Geist Mono', 'SFMono-Regular', Consolas, monospace;
+  --dispatch-bg-void: oklch(0.13 0.04 264);
+  --dispatch-bg-base: oklch(0.155 0.045 264);
+  --dispatch-bg-surface: oklch(0.19 0.05 264);
+  --dispatch-bg-elevated: oklch(0.22 0.05 264);
+  --dispatch-bg-hover: oklch(0.24 0.055 264);
+  --dispatch-bg-active: oklch(0.28 0.06 264);
+  --dispatch-border: oklch(0.27 0.05 264);
+  --dispatch-border-soft: oklch(0.23 0.045 264);
+  --dispatch-border-strong: oklch(0.34 0.06 264);
+  --dispatch-text-primary: oklch(0.96 0.01 85);
+  --dispatch-text-secondary: oklch(0.75 0.025 260);
+  --dispatch-text-tertiary: oklch(0.58 0.03 260);
+  --dispatch-text-quaternary: oklch(0.45 0.035 260);
+  --dispatch-cobalt: oklch(0.68 0.2 264);
+  --dispatch-cobalt-bright: oklch(0.74 0.18 264);
+  --dispatch-cobalt-12: oklch(0.68 0.2 264 / 0.12);
+  --dispatch-cobalt-18: oklch(0.68 0.2 264 / 0.18);
+  --dispatch-cobalt-30: oklch(0.68 0.2 264 / 0.3);
+  --dispatch-amber: oklch(0.82 0.16 75);
+  --dispatch-amber-12: oklch(0.82 0.16 75 / 0.14);
+  --dispatch-amber-30: oklch(0.82 0.16 75 / 0.3);
+  --dispatch-green: oklch(0.78 0.15 155);
+  --dispatch-green-12: oklch(0.78 0.15 155 / 0.14);
+  --dispatch-green-30: oklch(0.78 0.15 155 / 0.3);
+  --dispatch-rust: oklch(0.72 0.16 45);
+  --dispatch-rust-12: oklch(0.72 0.16 45 / 0.14);
+  --dispatch-rust-30: oklch(0.72 0.16 45 / 0.3);
+  --dispatch-shadow-card:
+    0 1px 0 0 oklch(0.3 0.05 264 / 0.6) inset, 0 1px 2px oklch(0 0 0 / 0.25);
+  --dispatch-shadow-cta:
+    0 6px 18px -10px oklch(0.68 0.2 264 / 0.6),
+    0 0 0 1px oklch(0.74 0.18 264 / 0.4) inset,
+    0 1px 0 oklch(0.85 0.1 264 / 0.4) inset;
+  --dispatch-shadow-pop:
+    0 24px 56px -16px oklch(0 0 0 / 0.55), 0 8px 24px -8px oklch(0 0 0 / 0.35);
+  --dispatch-r-sm: 6px;
+  --dispatch-r-md: 8px;
+  --dispatch-r-lg: 12px;
+  --dispatch-r-xl: 16px;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+}
+
+.dispatch-theme::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background-image: radial-gradient(
+    oklch(0.95 0.02 264 / 0.02) 1px,
+    transparent 1px
+  );
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+}
+
+.dispatch-theme main::-webkit-scrollbar,
+.dispatch-theme aside::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dispatch-theme main::-webkit-scrollbar-thumb,
+.dispatch-theme aside::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: var(--dispatch-bg-hover);
 }
