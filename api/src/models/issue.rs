@@ -94,7 +94,7 @@ pub struct CreateIssueRequest {
 }
 
 fn default_status() -> String {
-    "backlog".into()
+    "draft".into()
 }
 fn default_priority() -> String {
     "none".into()
@@ -169,7 +169,7 @@ impl IssueResponse {
 
 // ---- Validation helpers ----
 
-const VALID_STATUSES: &[&str] = &["backlog", "todo", "in-progress", "done", "cancelled"];
+const VALID_STATUSES: &[&str] = &["draft", "next", "doing", "done", "cancelled"];
 const VALID_PRIORITIES: &[&str] = &["urgent", "high", "medium", "low", "none"];
 const VALID_LABELS: &[&str] = &["bug", "feature", "improvement", "docs"];
 

@@ -24,8 +24,8 @@ CREATE TABLE issues (
     project_id  BIGINT          NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     parent_id   BIGINT          REFERENCES issues(id) ON DELETE SET NULL,
     title       TEXT            NOT NULL,
-    status      VARCHAR         NOT NULL DEFAULT 'backlog'
-                    CHECK (status IN ('backlog', 'todo', 'in-progress', 'done', 'cancelled')),
+    status      VARCHAR         NOT NULL DEFAULT 'draft'
+                    CHECK (status IN ('draft', 'next', 'doing', 'done', 'cancelled')),
     priority    VARCHAR         NOT NULL DEFAULT 'none'
                     CHECK (priority IN ('urgent', 'high', 'medium', 'low', 'none')),
     assignee_id BIGINT          REFERENCES users(id) ON DELETE SET NULL,
