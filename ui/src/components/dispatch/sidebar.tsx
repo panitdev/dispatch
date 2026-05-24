@@ -3,7 +3,6 @@ import {
   Folder,
   Home,
   Inbox,
-  Network,
   PanelLeft,
   Pin,
   Settings,
@@ -11,6 +10,7 @@ import {
 import { Link } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
+import { DispatchLogo } from '@/components/ui/logos'
 
 import { ProjectGlyph } from './primitives'
 
@@ -26,10 +26,8 @@ export function Sidebar({ active }: { active: DispatchPage }) {
 
   return (
     <aside className="hidden min-h-0 flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3 md:flex">
-      <div className="flex items-center gap-2.5 px-2.5 pt-1.5 pb-[18px]">
-        <div className="grid h-7 w-7 place-items-center rounded-[7px] bg-[linear-gradient(135deg,var(--dispatch-cobalt)_0%,oklch(0.55_0.22_280)_100%)] text-white shadow-[0_1px_0_oklch(0.85_0.1_264_/_0.3)_inset,0_4px_10px_-4px_oklch(0.55_0.22_280_/_0.5)]">
-          <Network size={16} strokeWidth={2} />
-        </div>
+      <div className="mb-2.5 flex items-center gap-2.5 rounded-[var(--dispatch-r-lg)] bg-[linear-gradient(90deg,oklch(0.5_0.018_218)_0%,oklch(0.39_0.028_226)_34%,oklch(0.24_0.045_252)_100%)] px-2.5 py-2.5">
+        <SidebarLogo />
         <div className="text-[17px] font-semibold tracking-[-0.015em]">
           Dispatch
         </div>
@@ -90,6 +88,14 @@ export function Sidebar({ active }: { active: DispatchPage }) {
         </Button>
       </div>
     </aside>
+  )
+}
+
+function SidebarLogo() {
+  return (
+    <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-[7px]">
+      <DispatchLogo size={32} className="size-8" />
+    </div>
   )
 }
 
