@@ -3,7 +3,6 @@ import {
   FilePenLine,
   Folder,
   History,
-  Inbox,
   Play,
   Plus,
   Search,
@@ -78,12 +77,6 @@ export function CommandPalette({
             heading="Jump"
             className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[10.5px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-[var(--dispatch-text-quaternary)] [&_[cmdk-group-heading]]:uppercase"
           >
-            <PaletteItem
-              icon={<Inbox size={14} />}
-              label="Open Inbox"
-              shortcut={['G', 'I']}
-              onSelect={() => run(() => navigate({ to: '/inbox' }))}
-            />
             <PaletteItem
               icon={<Folder size={14} />}
               label="Open Projects"

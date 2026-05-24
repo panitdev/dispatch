@@ -2,7 +2,6 @@ import {
   FilePenLine,
   Folder,
   Home,
-  Inbox,
   PanelLeft,
   Pin,
   Settings,
@@ -19,7 +18,6 @@ import type { DispatchPage, ProjectKey } from '../../data/dispatch'
 export function Sidebar({ active }: { active: DispatchPage }) {
   const nav = [
     { label: 'Now' as const, to: '/', icon: Home },
-    { label: 'Inbox' as const, to: '/inbox', icon: Inbox, count: 7 },
     { label: 'Projects' as const, to: '/projects', icon: Folder },
     { label: 'Drafts' as const, to: '/drafts', icon: FilePenLine },
   ]

@@ -4,7 +4,6 @@ export type ProjectKey = 's' | 'r' | 'v'
 export type Status = 'Doing' | 'Next' | 'Done' | 'Draft'
 export type DispatchPage =
   | 'Now'
-  | 'Inbox'
   | 'Projects'
   | 'Drafts'
   | 'Settings'
@@ -89,32 +88,6 @@ export const recentIssues: Issue[] = [
   },
 ]
 
-export const inboxIssues: Issue[] = [
-  {
-    title: 'Review deployment timeline screenshot',
-    sub: 'Confirm the agent output maps to visible milestones',
-    project: 'Strophe',
-    projectKey: 's',
-    status: 'Next',
-    dot: 'cobalt',
-  },
-  {
-    title: 'Triage duplicate OAuth callback report',
-    sub: 'Two user reports appear to share the same redirect root',
-    project: 'Vault',
-    projectKey: 'v',
-    status: 'Next',
-    dot: 'amber',
-  },
-  {
-    title: 'Confirm new registry cleanup window',
-    sub: 'Ops asked whether nightly cleanup can move to 03:00',
-    project: 'Registry',
-    projectKey: 'r',
-    status: 'Draft',
-  },
-]
-
 export const draftIssues: Issue[] = [
   {
     title: 'SOC2 evidence review',
@@ -147,10 +120,6 @@ export const pageCopy: Record<
   Now: {
     title: 'Now',
     subtitle: 'Resume the right work without overload.',
-  },
-  Inbox: {
-    title: 'Inbox',
-    subtitle: 'Newly captured work before it has a reliable shape.',
   },
   Projects: {
     title: 'Projects',
