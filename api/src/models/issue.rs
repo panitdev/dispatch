@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::schema::{issue_labels, issue_relations, issues};
 
@@ -16,7 +17,7 @@ pub struct Issue {
     pub status: String,
     pub priority: String,
     pub assignee_id: Option<i64>,
-    pub body: String,
+    pub blocks: Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -32,7 +33,7 @@ pub struct NewIssue {
     pub status: String,
     pub priority: String,
     pub assignee_id: Option<i64>,
-    pub body: String,
+    pub blocks: Value,
 }
 
 #[derive(AsChangeset, Default)]
@@ -42,7 +43,7 @@ pub struct IssueChangeset {
     pub status: Option<String>,
     pub priority: Option<String>,
     pub assignee_id: Option<Option<i64>>,
-    pub body: Option<String>,
+    pub blocks: Option<Value>,
     pub parent_id: Option<Option<i64>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -62,6 +63,18 @@ pub struct IssueRelation {
     pub relation_type: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct IssueBodyBlock {
+    pub id: String,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
+}
+
 // ---- Request types ----
 
 #[derive(Deserialize)]
@@ -77,11 +90,15 @@ pub struct CreateIssueRequest {
     pub parent_id: Option<String>,
     pub assignee_id: Option<String>,
     #[serde(default)]
-    pub body: String,
+    pub blocks: Vec<IssueBodyBlock>,
 }
 
-fn default_status() -> String { "backlog".into() }
-fn default_priority() -> String { "none".into() }
+fn default_status() -> String {
+    "backlog".into()
+}
+fn default_priority() -> String {
+    "none".into()
+}
 
 #[derive(Deserialize, Default)]
 pub struct UpdateIssueRequest {
@@ -89,7 +106,7 @@ pub struct UpdateIssueRequest {
     pub status: Option<String>,
     pub priority: Option<String>,
     pub assignee_id: Option<Option<String>>,
-    pub body: Option<String>,
+    pub blocks: Option<Vec<IssueBodyBlock>>,
     pub parent_id: Option<Option<String>>,
     pub labels: Option<Vec<String>>,
 }
@@ -112,7 +129,7 @@ pub struct IssueResponse {
     pub priority: String,
     pub labels: Vec<String>,
     pub assignee_id: Option<String>,
-    pub body: String,
+    pub blocks: Vec<IssueBodyBlock>,
     pub created_at: String,
     pub updated_at: String,
     pub blocked_by: Vec<String>,
@@ -141,7 +158,7 @@ impl IssueResponse {
             priority: issue.priority,
             labels: labels.into_iter().map(|l| l.label).collect(),
             assignee_id: issue.assignee_id.map(|id| id.to_string()),
-            body: issue.body,
+            blocks: serde_json::from_value(issue.blocks).unwrap_or_default(),
             created_at: issue.created_at.to_rfc3339(),
             updated_at: issue.updated_at.to_rfc3339(),
             blocked_by,
@@ -156,8 +173,12 @@ const VALID_STATUSES: &[&str] = &["backlog", "todo", "in-progress", "done", "can
 const VALID_PRIORITIES: &[&str] = &["urgent", "high", "medium", "low", "none"];
 const VALID_LABELS: &[&str] = &["bug", "feature", "improvement", "docs"];
 
-pub fn validate_status(s: &str) -> bool { VALID_STATUSES.contains(&s) }
-pub fn validate_priority(p: &str) -> bool { VALID_PRIORITIES.contains(&p) }
+pub fn validate_status(s: &str) -> bool {
+    VALID_STATUSES.contains(&s)
+}
+pub fn validate_priority(p: &str) -> bool {
+    VALID_PRIORITIES.contains(&p)
+}
 pub fn validate_labels(labels: &[String]) -> bool {
     labels.iter().all(|l| VALID_LABELS.contains(&l.as_str()))
 }

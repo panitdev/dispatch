@@ -34,7 +34,7 @@ diesel::table! {
         status      -> Varchar,
         priority    -> Varchar,
         assignee_id -> Nullable<Int8>,
-        body        -> Text,
+        blocks      -> Jsonb,
         created_at  -> Timestamptz,
         updated_at  -> Timestamptz,
     }

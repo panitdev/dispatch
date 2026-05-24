@@ -29,7 +29,8 @@ CREATE TABLE issues (
     priority    VARCHAR         NOT NULL DEFAULT 'none'
                     CHECK (priority IN ('urgent', 'high', 'medium', 'low', 'none')),
     assignee_id BIGINT          REFERENCES users(id) ON DELETE SET NULL,
-    body        TEXT            NOT NULL DEFAULT '',
+    blocks      JSONB           NOT NULL DEFAULT '[]'::jsonb
+                    CHECK (jsonb_typeof(blocks) = 'array'),
     created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );

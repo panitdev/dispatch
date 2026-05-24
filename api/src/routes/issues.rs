@@ -9,11 +9,11 @@ use diesel_async::RunQueryDsl;
 
 use crate::{
     auth::kratos::KratosIdentity,
-    error::{AppError, ApiResult},
+    error::{ApiResult, AppError},
     models::issue::{
-        CreateIssueRequest, Issue, IssueChangeset, IssueLabel, IssueRelation, IssueResponse,
-        ListIssuesQuery, NewIssue, UpdateIssueRequest, validate_labels, validate_priority,
-        validate_status,
+        validate_labels, validate_priority, validate_status, CreateIssueRequest, Issue,
+        IssueChangeset, IssueLabel, IssueRelation, IssueResponse, ListIssuesQuery, NewIssue,
+        UpdateIssueRequest,
     },
     schema::{issue_labels, issue_relations, issues, projects},
     state::AppState,
@@ -75,10 +75,16 @@ pub async fn create_issue(
     Json(body): Json<CreateIssueRequest>,
 ) -> ApiResult<(StatusCode, Json<IssueResponse>)> {
     if !validate_status(&body.status) {
-        return Err(AppError::BadRequest(format!("invalid status: {}", body.status)));
+        return Err(AppError::BadRequest(format!(
+            "invalid status: {}",
+            body.status
+        )));
     }
     if !validate_priority(&body.priority) {
-        return Err(AppError::BadRequest(format!("invalid priority: {}", body.priority)));
+        return Err(AppError::BadRequest(format!(
+            "invalid priority: {}",
+            body.priority
+        )));
     }
     if !validate_labels(&body.labels) {
         return Err(AppError::BadRequest("one or more invalid labels".into()));
@@ -92,13 +98,19 @@ pub async fn create_issue(
     let parent_id = body
         .parent_id
         .as_deref()
-        .map(|s| s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid parent_id".into())))
+        .map(|s| {
+            s.parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid parent_id".into()))
+        })
         .transpose()?;
 
     let assignee_id = body
         .assignee_id
         .as_deref()
-        .map(|s| s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid assignee_id".into())))
+        .map(|s| {
+            s.parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid assignee_id".into()))
+        })
         .transpose()?;
 
     // Verify assignee exists if specified
@@ -122,16 +134,15 @@ pub async fn create_issue(
     let mut conn = state.db.get().await?;
 
     // Atomically increment issue_sequence and capture key + seq in one round-trip
-    let (project_key, seq): (String, i32) =
-        diesel::update(projects::table.find(project_id))
-            .set(projects::issue_sequence.eq(projects::issue_sequence + 1))
-            .returning((projects::key, projects::issue_sequence))
-            .get_result(&mut conn)
-            .await
-            .map_err(|e| match e {
-                diesel::result::Error::NotFound => AppError::BadRequest("project not found".into()),
-                other => AppError::Db(other),
-            })?;
+    let (project_key, seq): (String, i32) = diesel::update(projects::table.find(project_id))
+        .set(projects::issue_sequence.eq(projects::issue_sequence + 1))
+        .returning((projects::key, projects::issue_sequence))
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| match e {
+            diesel::result::Error::NotFound => AppError::BadRequest("project not found".into()),
+            other => AppError::Db(other),
+        })?;
 
     let issue_key = format!("{}-{}", project_key, seq);
 
@@ -144,7 +155,7 @@ pub async fn create_issue(
         status: body.status,
         priority: body.priority,
         assignee_id,
-        body: body.body,
+        blocks: serde_json::to_value(body.blocks).map_err(|_| AppError::Internal)?,
     };
 
     let created: Issue = diesel::insert_into(issues::table)
@@ -156,7 +167,10 @@ pub async fn create_issue(
         let label_rows: Vec<IssueLabel> = body
             .labels
             .iter()
-            .map(|l| IssueLabel { issue_id: created.id, label: l.clone() })
+            .map(|l| IssueLabel {
+                issue_id: created.id,
+                label: l.clone(),
+            })
             .collect();
         diesel::insert_into(issue_labels::table)
             .values(&label_rows)
@@ -165,7 +179,10 @@ pub async fn create_issue(
     }
 
     let (labels, relations) = fetch_issue_extras(&mut conn, created.id).await?;
-    Ok((StatusCode::CREATED, Json(IssueResponse::new(created, labels, relations))))
+    Ok((
+        StatusCode::CREATED,
+        Json(IssueResponse::new(created, labels, relations)),
+    ))
 }
 
 pub async fn get_issue(
@@ -173,7 +190,9 @@ pub async fn get_issue(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<Json<IssueResponse>> {
-    let issue_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let issue_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
     let mut conn = state.db.get().await?;
 
     let issue: Issue = issues::table.find(issue_id).first(&mut conn).await?;
@@ -187,7 +206,9 @@ pub async fn update_issue(
     Path(id): Path<String>,
     Json(body): Json<UpdateIssueRequest>,
 ) -> ApiResult<Json<IssueResponse>> {
-    let issue_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let issue_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
 
     if let Some(ref s) = body.status {
         if !validate_status(s) {
@@ -207,7 +228,9 @@ pub async fn update_issue(
 
     let assignee_change = match body.assignee_id {
         Some(Some(ref s)) => {
-            let parsed = s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid assignee_id".into()))?;
+            let parsed = s
+                .parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid assignee_id".into()))?;
             Some(Some(parsed))
         }
         Some(None) => Some(None),
@@ -216,7 +239,9 @@ pub async fn update_issue(
 
     let parent_change = match body.parent_id {
         Some(Some(ref s)) => {
-            let parsed = s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid parent_id".into()))?;
+            let parsed = s
+                .parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid parent_id".into()))?;
             Some(Some(parsed))
         }
         Some(None) => Some(None),
@@ -228,7 +253,11 @@ pub async fn update_issue(
         status: body.status,
         priority: body.priority,
         assignee_id: assignee_change,
-        body: body.body,
+        blocks: body
+            .blocks
+            .map(serde_json::to_value)
+            .transpose()
+            .map_err(|_| AppError::Internal)?,
         parent_id: parent_change,
         updated_at: Some(Utc::now()),
     };
@@ -249,7 +278,10 @@ pub async fn update_issue(
         if !new_labels.is_empty() {
             let label_rows: Vec<IssueLabel> = new_labels
                 .into_iter()
-                .map(|l| IssueLabel { issue_id: updated.id, label: l })
+                .map(|l| IssueLabel {
+                    issue_id: updated.id,
+                    label: l,
+                })
                 .collect();
             diesel::insert_into(issue_labels::table)
                 .values(&label_rows)
@@ -267,7 +299,9 @@ pub async fn delete_issue(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<StatusCode> {
-    let issue_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let issue_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
     let mut conn = state.db.get().await?;
 
     let deleted = diesel::delete(issues::table.find(issue_id))
