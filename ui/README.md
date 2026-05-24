@@ -62,6 +62,17 @@ For production env vars, run `wrangler secret put MY_VAR` for each secret listed
 
 KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
 
+## GitHub Actions CD
+
+Production deploys run from [`.github/workflows/deploy-ui.yml`](../.github/workflows/deploy-ui.yml) on pushes to `main` that touch `ui/**`, or via manual `workflow_dispatch`.
+
+Configure these repository secrets before enabling the workflow:
+
+- `CLOUDFLARE_API_TOKEN`: API token with permission to deploy Workers for this account.
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID for the target Workers account.
+
+The workflow runs `bun install --frozen-lockfile` and then `bun run deploy` from `ui/`, which builds the app and publishes the Worker defined in `wrangler.jsonc`.
+
 
 
 ## Routing
