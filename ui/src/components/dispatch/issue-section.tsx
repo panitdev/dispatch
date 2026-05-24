@@ -19,9 +19,18 @@ export function IssueSection({ section }: { section: Section }) {
         </div>
       </div>
 
-      {section.issues.map((issue) => (
-        <IssueRow key={`${section.title}-${issue.title}`} issue={issue} />
-      ))}
+      {section.issues.length === 0 ? (
+        <div className="border-t border-[var(--dispatch-border-soft)] px-4 py-5 text-[13px] text-[var(--dispatch-text-tertiary)]">
+          No issues here.
+        </div>
+      ) : (
+        section.issues.map((issue, index) => (
+          <IssueRow
+            key={issue.id ?? `${section.title}-${issue.title}-${index}`}
+            issue={issue}
+          />
+        ))
+      )}
     </section>
   )
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-export type ProjectKey = 's' | 'r' | 'v'
-export type Status = 'Doing' | 'Next' | 'Done' | 'Draft'
+export type ProjectKey = string
+export type Status = string
 export type DispatchPage =
   | 'Now'
   | 'Projects'
@@ -9,10 +9,12 @@ export type DispatchPage =
   | 'Settings'
 
 export type Issue = {
+  id?: string
   title: string
   sub: string
   project: string
   projectKey: ProjectKey
+  projectColor?: string
   status: Status
   priority?: string
   active?: boolean
@@ -133,4 +135,12 @@ export const pageCopy: Record<
     title: 'Settings',
     subtitle: 'Tune capture defaults and lightweight routing behavior.',
   },
+}
+
+export function formatStatusLabel(status: string) {
+  if (!status) {
+    return 'Unknown'
+  }
+
+  return `${status.charAt(0).toUpperCase()}${status.slice(1)}`
 }
