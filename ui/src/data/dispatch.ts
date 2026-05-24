@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react'
 
 export type ProjectKey = 's' | 'r' | 'v'
-export type Status = 'Doing' | 'Next' | 'Done' | 'Waiting'
+export type Status = 'Doing' | 'Next' | 'Done' | 'Draft'
 export type DispatchPage =
   | 'Now'
   | 'Inbox'
   | 'Projects'
-  | 'Waiting'
-  | 'Archive'
+  | 'Drafts'
   | 'Settings'
 
 export type Issue = {
@@ -112,29 +111,34 @@ export const inboxIssues: Issue[] = [
     sub: 'Ops asked whether nightly cleanup can move to 03:00',
     project: 'Registry',
     projectKey: 'r',
-    status: 'Waiting',
+    status: 'Draft',
   },
 ]
 
-export const waitingIssues: Issue[] = [
+export const draftIssues: Issue[] = [
   {
     title: 'SOC2 evidence review',
     sub: 'Blocked on auditor reply',
     project: 'Vault',
     projectKey: 'v',
-    status: 'Waiting',
+    status: 'Draft',
     dot: 'amber',
   },
   {
     title: 'Registry storage class migration',
-    sub: 'Waiting for infra window confirmation',
+    sub: 'Needs a rollout plan before it should enter active work',
     project: 'Registry',
     projectKey: 'r',
-    status: 'Waiting',
+    status: 'Draft',
+  },
+  {
+    title: 'Deployment timeline screenshots',
+    sub: 'Capture a cleaner before/after sequence for the overview deck',
+    project: 'Strophe',
+    projectKey: 's',
+    status: 'Draft',
   },
 ]
-
-export const archiveIssues = [...recentIssues, ...continueIssues.slice(1)]
 
 export const pageCopy: Record<
   DispatchPage,
@@ -152,13 +156,9 @@ export const pageCopy: Record<
     title: 'Projects',
     subtitle: 'Keep active work grouped by the product surface it affects.',
   },
-  Waiting: {
-    title: 'Waiting',
-    subtitle: 'Things that need a reply, a window, or an external signal.',
-  },
-  Archive: {
-    title: 'Archive',
-    subtitle: 'Resolved work and recently closed loops.',
+  Drafts: {
+    title: 'Drafts',
+    subtitle: 'Work that is captured, shaped, and not ready to pull forward yet.',
   },
   Settings: {
     title: 'Settings',

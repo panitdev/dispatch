@@ -8,17 +8,21 @@ import {
 
 import { Kbd } from './primitives'
 
-export function TopBar() {
+export function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
   return (
     <header className="flex items-center gap-3 border-b border-[var(--dispatch-border-soft)] px-3 py-3 md:px-6 md:py-3.5">
-      <div className="flex min-w-0 flex-1 cursor-text items-center gap-2.5 rounded-[var(--dispatch-r-lg)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-3.5 py-[9px] text-[13.5px] text-[var(--dispatch-text-tertiary)] transition-colors hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)] md:max-w-[560px]">
+      <button
+        type="button"
+        onClick={onOpenCommand}
+        className="flex min-w-0 flex-1 cursor-text items-center gap-2.5 rounded-[var(--dispatch-r-lg)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-3.5 py-[9px] text-left text-[13.5px] text-[var(--dispatch-text-tertiary)] transition-colors hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)] md:max-w-[560px]"
+      >
         <Search size={16} className="shrink-0" />
         <span className="flex-1 truncate">Search or jump…</span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>⌘</Kbd>
+          <Kbd>Ctrl</Kbd>
           <Kbd>K</Kbd>
         </span>
-      </div>
+      </button>
 
       <ButtonGroup>
         <Button

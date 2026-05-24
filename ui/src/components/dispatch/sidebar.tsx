@@ -1,6 +1,5 @@
 import {
-  Archive,
-  Clock,
+  FilePenLine,
   Folder,
   Home,
   Inbox,
@@ -22,8 +21,7 @@ export function Sidebar({ active }: { active: DispatchPage }) {
     { label: 'Now' as const, to: '/', icon: Home },
     { label: 'Inbox' as const, to: '/inbox', icon: Inbox, count: 7 },
     { label: 'Projects' as const, to: '/projects', icon: Folder },
-    { label: 'Waiting' as const, to: '/waiting', icon: Clock },
-    { label: 'Archive' as const, to: '/archive', icon: Archive },
+    { label: 'Drafts' as const, to: '/drafts', icon: FilePenLine },
   ]
 
   return (

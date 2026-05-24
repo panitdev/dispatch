@@ -60,7 +60,7 @@ export function StatusPill({ status }: { status: Status }) {
       ? 'bg-[var(--dispatch-green-12)] text-[oklch(0.88_0.16_155)] shadow-[0_0_0_1px_var(--dispatch-green-30)_inset]'
       : status === 'Done'
         ? 'bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-tertiary)] shadow-[0_0_0_1px_var(--dispatch-border)_inset]'
-        : status === 'Waiting'
+        : status === 'Draft'
           ? 'bg-[var(--dispatch-amber-12)] text-[var(--dispatch-amber)] shadow-[0_0_0_1px_var(--dispatch-amber-30)_inset]'
           : 'bg-[var(--dispatch-cobalt-12)] text-[var(--dispatch-cobalt-bright)] shadow-[0_0_0_1px_var(--dispatch-cobalt-30)_inset]'
 

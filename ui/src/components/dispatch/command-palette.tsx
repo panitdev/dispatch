@@ -1,76 +1,176 @@
-import { Calendar, Clock, Command, History, Play, Plus } from 'lucide-react'
+import {
+  Calendar,
+  FilePenLine,
+  Folder,
+  History,
+  Inbox,
+  Play,
+  Plus,
+  Search,
+  Settings,
+} from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
+
+import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command'
 
 import { Kbd } from './primitives'
 
-const commands = [
-  {
-    label: 'Create issue',
-    icon: <Plus size={14} />,
-    keys: ['⌘', 'N'],
-    active: true,
-  },
-  {
-    label: 'Resume project: Strophe',
-    icon: <Play size={14} />,
-    keys: ['⌘', '⇧', 'S'],
-  },
-  {
-    label: 'Move issue to Waiting',
-    icon: <Clock size={14} />,
-    keys: ['⌘', '⇧', 'W'],
-  },
-  {
-    label: 'Schedule revisit',
-    icon: <Calendar size={14} />,
-    keys: ['⌘', '⇧', 'D'],
-  },
-  {
-    label: 'Open last active issue',
-    icon: <History size={14} />,
-    keys: ['⌘', '⇧', 'L'],
-  },
-]
+import type React from 'react'
 
-export function CommandPalette() {
+type CommandPaletteProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: CommandPaletteProps) {
+  const navigate = useNavigate()
+
+  const run = (action: () => void) => {
+    onOpenChange(false)
+    action()
+  }
+
   return (
-    <div
-      className="absolute right-3 bottom-6 left-3 z-30 overflow-hidden rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] shadow-[var(--dispatch-shadow-pop)] md:right-auto md:bottom-14 md:left-1/2 md:w-[min(480px,calc(100%-48px))] md:-translate-x-[22%]"
-      role="dialog"
-      aria-label="Command palette"
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Dispatch command palette"
+      description="Search for a page or action."
+      className="dispatch-theme top-[18%] w-[min(760px,calc(100%-32px))] max-w-none translate-x-[-50%] overflow-hidden rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-0 text-[var(--dispatch-text-primary)] shadow-[var(--dispatch-shadow-pop)] ring-0 sm:max-w-[min(760px,calc(100%-32px))]"
+      showCloseButton={false}
     >
-      <div className="flex items-center gap-2.5 border-b border-[var(--dispatch-border-soft)] px-4 py-[13px]">
-        <Command size={15} className="text-[var(--dispatch-text-tertiary)]" />
-        <div className="text-[13px] font-medium text-[var(--dispatch-text-secondary)]">
-          Command
-        </div>
-        <div className="flex-1" />
-        <span className="inline-flex items-center gap-1">
-          <Kbd>⌘</Kbd>
-          <Kbd>K</Kbd>
-        </span>
-      </div>
-      <div className="flex flex-col gap-px p-1.5">
-        {commands.map((command) => (
-          <div
-            className={`flex cursor-pointer items-center gap-3 rounded-[var(--dispatch-r-md)] px-3 py-2.5 transition-colors hover:bg-[var(--dispatch-bg-hover)] ${command.active ? 'bg-[linear-gradient(180deg,var(--dispatch-cobalt-18)_0%,var(--dispatch-cobalt-12)_100%)] shadow-[0_0_0_1px_var(--dispatch-cobalt-30)_inset]' : ''}`}
-            key={command.label}
-          >
-            <div
-              className={`grid h-[26px] w-[26px] place-items-center rounded-[var(--dispatch-r-sm)] ${command.active ? 'bg-[var(--dispatch-cobalt)] text-white shadow-[0_0_0_1px_oklch(0.85_0.1_264_/_0.4)_inset]' : 'bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-secondary)]'}`}
-            >
-              {command.icon}
-            </div>
-            <div className="flex-1 text-[13.5px] font-medium text-[var(--dispatch-text-primary)]">
-              {command.label}
-            </div>
-            <span className="inline-flex items-center gap-1">
-              {command.keys.map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
-            </span>
+      <Command className="rounded-[var(--dispatch-r-xl)] bg-[var(--dispatch-bg-elevated)] p-0 text-[var(--dispatch-text-primary)]">
+        <div className="flex items-center gap-2.5 border-b border-[var(--dispatch-border-soft)] px-4 py-[13px]">
+          <Search size={15} className="text-[var(--dispatch-text-tertiary)]" />
+          <div className="text-[13px] font-medium text-[var(--dispatch-text-secondary)]">
+            Command
           </div>
-        ))}
+          <div className="flex-1" />
+          <span className="inline-flex items-center gap-1">
+            <Kbd>Ctrl</Kbd>
+            <Kbd>K</Kbd>
+          </span>
+        </div>
+        <CommandInput
+          placeholder="Search for a page or action…"
+          wrapperClassName="p-1.5 pb-0"
+          groupClassName="h-11! rounded-[var(--dispatch-r-lg)]! border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] shadow-none!"
+          className="px-4 text-[13.5px] text-[var(--dispatch-text-primary)] placeholder:text-[var(--dispatch-text-tertiary)]"
+        />
+        <CommandList className="max-h-[360px] px-1.5 pb-1.5">
+          <CommandEmpty className="py-8 text-[13px] text-[var(--dispatch-text-tertiary)]">
+            No matching command.
+          </CommandEmpty>
+          <CommandGroup
+            heading="Jump"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[10.5px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-[var(--dispatch-text-quaternary)] [&_[cmdk-group-heading]]:uppercase"
+          >
+            <PaletteItem
+              icon={<Inbox size={14} />}
+              label="Open Inbox"
+              shortcut={['G', 'I']}
+              onSelect={() => run(() => navigate({ to: '/inbox' }))}
+            />
+            <PaletteItem
+              icon={<Folder size={14} />}
+              label="Open Projects"
+              shortcut={['G', 'P']}
+              onSelect={() => run(() => navigate({ to: '/projects' }))}
+            />
+            <PaletteItem
+              icon={<FilePenLine size={14} />}
+              label="Open Drafts"
+              shortcut={['G', 'D']}
+              onSelect={() => run(() => navigate({ to: '/drafts' }))}
+            />
+            <PaletteItem
+              icon={<Settings size={14} />}
+              label="Open Settings"
+              shortcut={['G', 'S']}
+              onSelect={() => run(() => navigate({ to: '/settings' }))}
+            />
+          </CommandGroup>
+          <CommandSeparator className="mx-3 bg-[var(--dispatch-border-soft)]" />
+          <CommandGroup
+            heading="Actions"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[10.5px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-[var(--dispatch-text-quaternary)] [&_[cmdk-group-heading]]:uppercase"
+          >
+            <PaletteItem
+              icon={<Plus size={14} />}
+              label="Create issue"
+              shortcut={['Ctrl', 'N']}
+              onSelect={() => onOpenChange(false)}
+            />
+            <PaletteItem
+              icon={<Play size={14} />}
+              label="Resume project: Strophe"
+              shortcut={['Ctrl', 'Shift', 'S']}
+              onSelect={() => run(() => navigate({ to: '/' }))}
+            />
+            <PaletteItem
+              icon={<FilePenLine size={14} />}
+              label="Send issue to Drafts"
+              shortcut={['Ctrl', 'Shift', 'D']}
+              onSelect={() => run(() => navigate({ to: '/drafts' }))}
+            />
+            <PaletteItem
+              icon={<Calendar size={14} />}
+              label="Schedule revisit"
+              shortcut={['Ctrl', 'Shift', 'R']}
+              onSelect={() => onOpenChange(false)}
+            />
+            <PaletteItem
+              icon={<History size={14} />}
+              label="Open last active issue"
+              shortcut={['Ctrl', 'Shift', 'L']}
+              onSelect={() => run(() => navigate({ to: '/' }))}
+            />
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </CommandDialog>
+  )
+}
+
+function PaletteItem({
+  icon,
+  label,
+  shortcut,
+  onSelect,
+}: {
+  icon: React.ReactNode
+  label: string
+  shortcut: string[]
+  onSelect: () => void
+}) {
+  return (
+    <CommandItem
+      value={label}
+      onSelect={onSelect}
+      className="gap-3 rounded-[var(--dispatch-r-md)] px-3 py-2.5 text-[13.5px] font-medium text-[var(--dispatch-text-primary)] data-selected:bg-transparent data-selected:[background-image:linear-gradient(180deg,var(--dispatch-cobalt-18)_0%,var(--dispatch-cobalt-12)_100%)] data-selected:text-[var(--dispatch-text-primary)] data-selected:shadow-[0_0_0_1px_var(--dispatch-cobalt-30)_inset,0_1px_0_oklch(0.85_0.1_264_/_0.18)_inset] data-selected:[&_div:first-child]:bg-[var(--dispatch-cobalt)] data-selected:[&_div:first-child]:text-white data-selected:[&_div:first-child]:shadow-[0_0_0_1px_oklch(0.85_0.1_264_/_0.4)_inset] data-selected:[&_svg]:text-[var(--dispatch-cobalt-bright)]"
+    >
+      <div className="grid h-[26px] w-[26px] place-items-center rounded-[var(--dispatch-r-sm)] bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-secondary)]">
+        {icon}
       </div>
-    </div>
+      <div className="flex-1">{label}</div>
+      <CommandShortcut className="inline-flex items-center gap-1 font-sans tracking-normal text-[var(--dispatch-text-tertiary)] group-data-selected/command-item:text-[var(--dispatch-text-secondary)]">
+        {shortcut.map((key) => (
+          <Kbd key={`${label}-${key}`}>{key}</Kbd>
+        ))}
+      </CommandShortcut>
+    </CommandItem>
   )
 }

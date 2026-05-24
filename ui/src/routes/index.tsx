@@ -7,7 +7,7 @@ export const Route = createFileRoute('/')({ component: NowRoute })
 
 function NowRoute() {
   return (
-    <DispatchLayout active="Now" commandPalette>
+    <DispatchLayout active="Now">
       <NowPage />
     </DispatchLayout>
   )
