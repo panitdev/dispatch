@@ -4,8 +4,7 @@ diesel::table! {
     users (id) {
         id         -> Int8,
         kratos_id  -> Uuid,
-        name       -> Varchar,
-        email      -> Varchar,
+        username   -> Varchar,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

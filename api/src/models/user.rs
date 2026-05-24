@@ -11,15 +11,14 @@ use crate::schema::users;
 pub struct User {
     pub id: i64,
     pub kratos_id: Uuid,
-    pub name: String,
-    pub email: String,
+    pub username: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl User {
     pub fn initials(&self) -> String {
-        self.name
+        self.username
             .split_whitespace()
             .filter_map(|w| w.chars().next())
             .take(2)
@@ -33,17 +32,15 @@ impl User {
 pub struct NewUser {
     pub id: i64,
     pub kratos_id: Uuid,
-    pub name: String,
-    pub email: String,
+    pub username: String,
 }
 
 #[derive(Serialize)]
 pub struct UserResponse {
     pub id: String,
     pub kratos_id: String,
-    pub name: String,
+    pub username: String,
     pub initials: String,
-    pub email: String,
     pub created_at: String,
 }
 
@@ -53,9 +50,8 @@ impl From<User> for UserResponse {
         Self {
             id: u.id.to_string(),
             kratos_id: u.kratos_id.to_string(),
-            name: u.name,
+            username: u.username,
             initials,
-            email: u.email,
             created_at: u.created_at.to_rfc3339(),
         }
     }

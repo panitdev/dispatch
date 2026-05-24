@@ -1,8 +1,7 @@
 CREATE TABLE users (
     id          BIGINT          PRIMARY KEY,
     kratos_id   UUID            NOT NULL UNIQUE,
-    name        VARCHAR         NOT NULL,
-    email       VARCHAR         NOT NULL UNIQUE,
+    username    VARCHAR         NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );

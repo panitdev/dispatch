@@ -20,8 +20,7 @@ use crate::{
 pub struct KratosIdentity {
     pub session_id: String,
     pub kratos_user_id: Uuid,
-    pub email: String,
-    pub name: String,
+    pub username: String,
 }
 
 // ---- Internal Kratos JSON shapes ----
@@ -40,30 +39,7 @@ struct KratosIdentityPayload {
 
 #[derive(Deserialize)]
 struct KratosTraits {
-    email: String,
-    #[serde(default)]
-    name: Option<KratosName>,
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum KratosName {
-    Full(String),
-    Parts { first: Option<String>, last: Option<String> },
-}
-
-impl KratosTraits {
-    fn full_name(&self) -> String {
-        match &self.name {
-            Some(KratosName::Full(s)) => s.clone(),
-            Some(KratosName::Parts { first, last }) => [first.as_deref(), last.as_deref()]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(" "),
-            None => self.email.split('@').next().unwrap_or("User").to_string(),
-        }
-    }
+    username: String,
 }
 
 // ---- Axum extractor ----
@@ -138,8 +114,7 @@ where
         Ok(KratosIdentity {
             session_id: payload.id,
             kratos_user_id: payload.identity.id,
-            email: payload.identity.traits.email.clone(),
-            name: payload.identity.traits.full_name(),
+            username: payload.identity.traits.username,
         })
     }
 }
@@ -167,8 +142,7 @@ impl KratosIdentity {
         let new_user = NewUser {
             id: state.next_id(),
             kratos_id: self.kratos_user_id,
-            name: self.name.clone(),
-            email: self.email.clone(),
+            username: self.username.clone(),
         };
 
         diesel::insert_into(users::table)
