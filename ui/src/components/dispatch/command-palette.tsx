@@ -160,7 +160,7 @@ function PaletteItem({
     <CommandItem
       value={label}
       onSelect={onSelect}
-      className="gap-3 rounded-[var(--dispatch-r-md)] px-3 py-2.5 text-[13.5px] font-medium text-[var(--dispatch-text-primary)] data-selected:bg-transparent data-selected:[background-image:linear-gradient(180deg,var(--dispatch-cobalt-18)_0%,var(--dispatch-cobalt-12)_100%)] data-selected:text-[var(--dispatch-text-primary)] data-selected:shadow-[0_0_0_1px_var(--dispatch-cobalt-30)_inset,0_1px_0_oklch(0.85_0.1_264_/_0.18)_inset] data-selected:[&_div:first-child]:bg-[var(--dispatch-cobalt)] data-selected:[&_div:first-child]:text-white data-selected:[&_div:first-child]:shadow-[0_0_0_1px_oklch(0.85_0.1_264_/_0.4)_inset] data-selected:[&_svg]:text-[var(--dispatch-cobalt-bright)]"
+      className="gap-3 rounded-[var(--dispatch-r-md)] px-3 py-2.5 text-[13.5px] font-medium text-[var(--dispatch-text-primary)] data-selected:bg-transparent data-selected:[background-image:linear-gradient(180deg,var(--dispatch-cobalt-18)_0%,var(--dispatch-cobalt-12)_100%)] data-selected:text-[var(--dispatch-text-primary)] data-selected:shadow-[0_0_0_1px_var(--dispatch-cobalt-30)_inset,0_1px_0_oklch(0.85_0.1_264_/_0.18)_inset] data-selected:[&_div:first-child]:bg-[var(--dispatch-cobalt)] data-selected:[&_div:first-child]:text-white data-selected:[&_div:first-child]:shadow-[0_0_0_1px_oklch(0.85_0.1_264_/_0.4)_inset] data-selected:[&_div:first-child_svg]:text-white"
     >
       <div className="grid h-[26px] w-[26px] place-items-center rounded-[var(--dispatch-r-sm)] bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-secondary)]">
         {icon}

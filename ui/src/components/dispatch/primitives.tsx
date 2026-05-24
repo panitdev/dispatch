@@ -57,7 +57,7 @@ export function ProjectChip({
 export function StatusPill({ status }: { status: Status }) {
   const statusClass =
     status === 'Doing'
-      ? 'bg-[var(--dispatch-green-12)] text-[oklch(0.88_0.16_155)] shadow-[0_0_0_1px_var(--dispatch-green-30)_inset]'
+      ? 'bg-[var(--dispatch-green-12)] text-[var(--dispatch-green-text)] shadow-[0_0_0_1px_var(--dispatch-green-30)_inset]'
       : status === 'Done'
         ? 'bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-tertiary)] shadow-[0_0_0_1px_var(--dispatch-border)_inset]'
         : status === 'Draft'

@@ -105,7 +105,7 @@ export function DetailRail() {
             <Edit3 size={13} />
             Edit issue
           </Button>
-          <ButtonGroupSeparator className="bg-[oklch(0.55_0.22_264_/_0.5)]" />
+          <ButtonGroupSeparator className="bg-[var(--dispatch-cta-divider)]" />
           <Button
             size="icon-xs"
             className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"

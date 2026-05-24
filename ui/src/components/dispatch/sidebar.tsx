@@ -26,7 +26,7 @@ export function Sidebar({ active }: { active: DispatchPage }) {
 
   return (
     <aside className="hidden min-h-0 flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3 md:flex">
-      <div className="mb-2.5 flex items-center gap-2.5 rounded-[var(--dispatch-r-lg)] bg-[linear-gradient(90deg,oklch(0.5_0.018_218)_0%,oklch(0.39_0.028_226)_34%,oklch(0.24_0.045_252)_100%)] px-2.5 py-2.5">
+      <div className="mb-2.5 flex items-center gap-2.5 rounded-[var(--dispatch-r-lg)] bg-[linear-gradient(90deg,var(--dispatch-brand-grad-start)_0%,var(--dispatch-brand-grad-mid)_34%,var(--dispatch-brand-grad-end)_100%)] px-2.5 py-2.5">
         <SidebarLogo />
         <div className="text-[17px] font-semibold tracking-[-0.015em]">
           Dispatch

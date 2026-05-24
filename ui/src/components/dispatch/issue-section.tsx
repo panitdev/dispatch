@@ -9,7 +9,7 @@ import type { Issue, Section } from '../../data/dispatch'
 export function IssueSection({ section }: { section: Section }) {
   return (
     <section className="mb-[18px] overflow-hidden rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] shadow-[var(--dispatch-shadow-card)]">
-      <div className="flex items-center gap-2.5 border-b border-[var(--dispatch-border-soft)] bg-[linear-gradient(180deg,oklch(0.21_0.05_264)_0%,var(--dispatch-bg-surface)_100%)] px-[18px] py-[13px]">
+      <div className="flex items-center gap-2.5 border-b border-[var(--dispatch-border-soft)] bg-[linear-gradient(180deg,var(--dispatch-section-head-grad-top)_0%,var(--dispatch-bg-surface)_100%)] px-[18px] py-[13px]">
         <div className={sectionIconClass(section.tone)}>{section.icon}</div>
         <div className="whitespace-nowrap text-[14.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)]">
           {section.title}
@@ -29,7 +29,7 @@ export function IssueSection({ section }: { section: Section }) {
 function IssueRow({ issue }: { issue: Issue }) {
   return (
     <div
-      className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${issue.active ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,oklch(0.68_0.2_264_/_0.04)_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
+      className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${issue.active ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
     >
       <div className={dotClass(issue.dot)} />
       <div className="min-w-0">

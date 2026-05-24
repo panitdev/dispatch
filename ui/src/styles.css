@@ -192,6 +192,13 @@ button {
   --dispatch-rust: oklch(0.72 0.16 45);
   --dispatch-rust-12: oklch(0.72 0.16 45 / 0.14);
   --dispatch-rust-30: oklch(0.72 0.16 45 / 0.3);
+  --dispatch-section-head-grad-top: oklch(0.21 0.05 264);
+  --dispatch-cta-divider: oklch(0.55 0.22 264 / 0.5);
+  --dispatch-brand-grad-start: oklch(0.5 0.018 218);
+  --dispatch-brand-grad-mid: oklch(0.39 0.028 226);
+  --dispatch-brand-grad-end: oklch(0.24 0.045 252);
+  --dispatch-brand-mark-end: oklch(0.55 0.22 280);
+  --dispatch-green-text: oklch(0.88 0.16 155);
   --dispatch-shadow-card:
     0 1px 0 0 oklch(0.3 0.05 264 / 0.6) inset, 0 1px 2px oklch(0 0 0 / 0.25);
   --dispatch-shadow-cta:
@@ -208,6 +215,53 @@ button {
   font-feature-settings: 'ss01', 'cv11', 'tnum';
 }
 
+:root[data-theme='light'] .dispatch-theme {
+  --dispatch-bg-void: oklch(0.955 0.015 85);
+  --dispatch-bg-base: oklch(0.985 0.012 85);
+  --dispatch-bg-surface: oklch(0.965 0.014 85);
+  --dispatch-bg-elevated: oklch(1 0 0);
+  --dispatch-bg-hover: oklch(0.945 0.016 85);
+  --dispatch-bg-active: oklch(0.92 0.02 85);
+  --dispatch-border: oklch(0.9 0.015 85);
+  --dispatch-border-soft: oklch(0.93 0.013 85);
+  --dispatch-border-strong: oklch(0.84 0.02 85);
+  --dispatch-text-primary: oklch(0.18 0.06 264);
+  --dispatch-text-secondary: oklch(0.38 0.05 264);
+  --dispatch-text-tertiary: oklch(0.55 0.04 264);
+  --dispatch-text-quaternary: oklch(0.7 0.03 264);
+  --dispatch-cobalt: oklch(0.48 0.24 264);
+  --dispatch-cobalt-bright: oklch(0.42 0.25 264);
+  --dispatch-cobalt-12: oklch(0.48 0.24 264 / 0.1);
+  --dispatch-cobalt-18: oklch(0.48 0.24 264 / 0.14);
+  --dispatch-cobalt-30: oklch(0.48 0.24 264 / 0.28);
+  --dispatch-amber: oklch(0.72 0.13 75);
+  --dispatch-amber-12: oklch(0.82 0.13 75 / 0.2);
+  --dispatch-amber-30: oklch(0.72 0.13 75 / 0.4);
+  --dispatch-green: oklch(0.62 0.14 155);
+  --dispatch-green-12: oklch(0.62 0.14 155 / 0.14);
+  --dispatch-green-30: oklch(0.62 0.14 155 / 0.32);
+  --dispatch-rust: oklch(0.58 0.17 45);
+  --dispatch-rust-12: oklch(0.58 0.17 45 / 0.14);
+  --dispatch-rust-30: oklch(0.58 0.17 45 / 0.32);
+  --dispatch-section-head-grad-top: oklch(0.945 0.016 85);
+  --dispatch-cta-divider: oklch(0.38 0.22 264 / 0.45);
+  --dispatch-brand-grad-start: oklch(0.972 0.01 85);
+  --dispatch-brand-grad-mid: oklch(0.9 0.018 246);
+  --dispatch-brand-grad-end: oklch(0.82 0.032 254);
+  --dispatch-brand-mark-end: oklch(0.36 0.22 280);
+  --dispatch-green-text: oklch(0.42 0.14 155);
+  --dispatch-shadow-card:
+    0 1px 0 0 oklch(1 0 0 / 0.6) inset,
+    0 1px 3px oklch(0.18 0.06 264 / 0.06);
+  --dispatch-shadow-cta:
+    0 6px 18px -10px oklch(0.48 0.24 264 / 0.45),
+    0 0 0 1px oklch(0.55 0.24 264 / 0.45) inset,
+    0 1px 0 oklch(0.85 0.1 264 / 0.5) inset;
+  --dispatch-shadow-pop:
+    0 24px 56px -16px oklch(0.18 0.06 264 / 0.18),
+    0 8px 24px -8px oklch(0.18 0.06 264 / 0.1);
+}
+
 .dispatch-theme::before {
   content: '';
   position: fixed;
@@ -220,6 +274,27 @@ button {
   );
   background-size: 3px 3px;
   mix-blend-mode: overlay;
+}
+
+:root[data-theme='light'] .dispatch-theme::before {
+  background-image: none;
+  mix-blend-mode: multiply;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dispatch-theme,
+  .dispatch-theme *,
+  .dispatch-theme *::before,
+  .dispatch-theme *::after {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      fill 180ms ease,
+      stroke 180ms ease,
+      box-shadow 180ms ease,
+      opacity 180ms ease;
+  }
 }
 
 .dispatch-theme main::-webkit-scrollbar,
