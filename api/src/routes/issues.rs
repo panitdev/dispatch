@@ -6,6 +6,8 @@ use axum::{
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use serde::Serialize;
+use std::collections::HashMap;
 
 use crate::{
     auth::kratos::KratosIdentity,
@@ -15,6 +17,7 @@ use crate::{
         IssueChangeset, IssueLabel, IssueRelation, IssueResponse, ListIssuesQuery, NewIssue,
         UpdateIssueRequest,
     },
+    models::project::Project,
     schema::{issue_labels, issue_relations, issues, projects},
     state::AppState,
 };
@@ -32,6 +35,31 @@ async fn fetch_issue_extras(
         .load(conn)
         .await?;
     Ok((labels, relations))
+}
+
+#[derive(Serialize)]
+pub struct NewIssuesResponse {
+    #[serde(rename = "continue")]
+    pub r#continue: Vec<NowIssueSummary>,
+    pub next: Vec<NowIssueSummary>,
+    pub drafts: Vec<NowIssueSummary>,
+}
+
+#[derive(Serialize)]
+pub struct NowIssueSummary {
+    pub title: String,
+    pub description: Option<String>,
+    pub project: NowProjectSummary,
+    pub status: String,
+    pub labels: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct NowProjectSummary {
+    pub id: String,
+    pub key: String,
+    pub name: String,
+    pub color: String,
 }
 
 pub async fn list_project_issues(
@@ -69,6 +97,92 @@ pub async fn list_project_issues(
     Ok(Json(responses))
 }
 
+pub async fn get_new_issues(
+    identity: KratosIdentity,
+    State(state): State<AppState>,
+) -> ApiResult<Json<NewIssuesResponse>> {
+    let user = identity.resolve_user(&state).await?;
+    let mut conn = state.db.get().await?;
+
+    let continue_rows: Vec<(Issue, Project)> = issues::table
+        .inner_join(projects::table)
+        .filter(issues::assignee_id.eq(user.id))
+        .filter(issues::status.eq("doing"))
+        .order_by(issues::updated_at.desc())
+        .select((Issue::as_select(), Project::as_select()))
+        .limit(3)
+        .load(&mut conn)
+        .await?;
+
+    let next_rows: Vec<(Issue, Project)> = issues::table
+        .inner_join(projects::table)
+        .filter(issues::assignee_id.eq(user.id))
+        .filter(issues::status.eq("next"))
+        .order_by((issues::priority.desc(), issues::updated_at.desc()))
+        .select((Issue::as_select(), Project::as_select()))
+        .limit(3)
+        .load(&mut conn)
+        .await?;
+
+    let draft_rows: Vec<(Issue, Project)> = issues::table
+        .inner_join(projects::table)
+        .filter(issues::author_id.eq(user.id))
+        .filter(issues::status.eq("draft"))
+        .order_by(issues::updated_at.desc())
+        .select((Issue::as_select(), Project::as_select()))
+        .limit(3)
+        .load(&mut conn)
+        .await?;
+
+    let issue_ids: Vec<i64> = continue_rows
+        .iter()
+        .chain(next_rows.iter())
+        .chain(draft_rows.iter())
+        .map(|(issue, _)| issue.id)
+        .collect();
+
+    let label_rows: Vec<IssueLabel> = if issue_ids.is_empty() {
+        Vec::new()
+    } else {
+        issue_labels::table
+            .filter(issue_labels::issue_id.eq_any(&issue_ids))
+            .order_by((issue_labels::issue_id.asc(), issue_labels::label.asc()))
+            .load(&mut conn)
+            .await?
+    };
+
+    let mut labels_by_issue: HashMap<i64, Vec<String>> = HashMap::new();
+    for label in label_rows {
+        labels_by_issue
+            .entry(label.issue_id)
+            .or_default()
+            .push(label.label);
+    }
+
+    let mut summarize = |rows: Vec<(Issue, Project)>| {
+        rows.into_iter()
+            .map(|(issue, project)| NowIssueSummary {
+                title: issue.title,
+                description: None,
+                project: NowProjectSummary {
+                    id: project.id.to_string(),
+                    key: project.key,
+                    name: project.name,
+                    color: project.color,
+                },
+                status: issue.status,
+                labels: labels_by_issue.remove(&issue.id).unwrap_or_default(),
+            })
+            .collect()
+    };
+
+    Ok(Json(NewIssuesResponse {
+        r#continue: summarize(continue_rows),
+        next: summarize(next_rows),
+        drafts: summarize(draft_rows),
+    }))
+}
+
 pub async fn create_issue(
     identity: KratosIdentity,
     State(state): State<AppState>,
@@ -80,7 +194,7 @@ pub async fn create_issue(
             body.status
         )));
     }
-    if !validate_priority(&body.priority) {
+    if !validate_priority(body.priority) {
         return Err(AppError::BadRequest(format!(
             "invalid priority: {}",
             body.priority
@@ -113,10 +227,11 @@ pub async fn create_issue(
         })
         .transpose()?;
 
+    let user = identity.resolve_user(&state).await?;
+
     // Verify assignee exists if specified
     if let Some(aid) = assignee_id {
         use crate::schema::users;
-        let _user = identity.resolve_user(&state).await?;
         let mut conn = state.db.get().await?;
         let exists: i64 = users::table
             .filter(users::id.eq(aid))
@@ -126,9 +241,6 @@ pub async fn create_issue(
         if exists == 0 {
             return Err(AppError::BadRequest("assignee not found".into()));
         }
-    } else {
-        // Still resolve to ensure the caller is provisioned
-        identity.resolve_user(&state).await?;
     }
 
     let mut conn = state.db.get().await?;
@@ -154,6 +266,7 @@ pub async fn create_issue(
         title: body.title,
         status: body.status,
         priority: body.priority,
+        author_id: user.id,
         assignee_id,
         blocks: serde_json::to_value(body.blocks).map_err(|_| AppError::Internal)?,
     };
@@ -216,7 +329,7 @@ pub async fn update_issue(
         }
     }
     if let Some(ref p) = body.priority {
-        if !validate_priority(p) {
+        if !validate_priority(*p) {
             return Err(AppError::BadRequest(format!("invalid priority: {p}")));
         }
     }

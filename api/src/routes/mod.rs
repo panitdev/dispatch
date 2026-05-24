@@ -20,6 +20,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/projects/{id}", patch(projects::update_project))
         .route("/api/v1/projects/{id}", delete(projects::delete_project))
         .route("/api/v1/projects/{id}/issues", get(issues::list_project_issues))
+        .route("/api/v1/now", get(issues::get_new_issues))
         .route("/api/v1/issues", post(issues::create_issue))
         .route("/api/v1/issues/{id}", get(issues::get_issue))
         .route("/api/v1/issues/{id}", patch(issues::update_issue))

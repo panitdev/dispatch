@@ -15,7 +15,8 @@ pub struct Issue {
     pub parent_id: Option<i64>,
     pub title: String,
     pub status: String,
-    pub priority: String,
+    pub priority: i32,
+    pub author_id: i64,
     pub assignee_id: Option<i64>,
     pub blocks: Value,
     pub created_at: DateTime<Utc>,
@@ -31,7 +32,8 @@ pub struct NewIssue {
     pub parent_id: Option<i64>,
     pub title: String,
     pub status: String,
-    pub priority: String,
+    pub priority: i32,
+    pub author_id: i64,
     pub assignee_id: Option<i64>,
     pub blocks: Value,
 }
@@ -41,7 +43,7 @@ pub struct NewIssue {
 pub struct IssueChangeset {
     pub title: Option<String>,
     pub status: Option<String>,
-    pub priority: Option<String>,
+    pub priority: Option<i32>,
     pub assignee_id: Option<Option<i64>>,
     pub blocks: Option<Value>,
     pub parent_id: Option<Option<i64>>,
@@ -84,7 +86,7 @@ pub struct CreateIssueRequest {
     #[serde(default = "default_status")]
     pub status: String,
     #[serde(default = "default_priority")]
-    pub priority: String,
+    pub priority: i32,
     #[serde(default)]
     pub labels: Vec<String>,
     pub parent_id: Option<String>,
@@ -96,15 +98,15 @@ pub struct CreateIssueRequest {
 fn default_status() -> String {
     "draft".into()
 }
-fn default_priority() -> String {
-    "none".into()
+fn default_priority() -> i32 {
+    0
 }
 
 #[derive(Deserialize, Default)]
 pub struct UpdateIssueRequest {
     pub title: Option<String>,
     pub status: Option<String>,
-    pub priority: Option<String>,
+    pub priority: Option<i32>,
     pub assignee_id: Option<Option<String>>,
     pub blocks: Option<Vec<IssueBodyBlock>>,
     pub parent_id: Option<Option<String>>,
@@ -126,7 +128,7 @@ pub struct IssueResponse {
     pub parent_id: Option<String>,
     pub title: String,
     pub status: String,
-    pub priority: String,
+    pub priority: i32,
     pub labels: Vec<String>,
     pub assignee_id: Option<String>,
     pub blocks: Vec<IssueBodyBlock>,
@@ -170,14 +172,14 @@ impl IssueResponse {
 // ---- Validation helpers ----
 
 const VALID_STATUSES: &[&str] = &["draft", "next", "doing", "done", "cancelled"];
-const VALID_PRIORITIES: &[&str] = &["urgent", "high", "medium", "low", "none"];
+const PRIORITY_RANGE: std::ops::RangeInclusive<i32> = 0..=4;
 const VALID_LABELS: &[&str] = &["bug", "feature", "improvement", "docs"];
 
 pub fn validate_status(s: &str) -> bool {
     VALID_STATUSES.contains(&s)
 }
-pub fn validate_priority(p: &str) -> bool {
-    VALID_PRIORITIES.contains(&p)
+pub fn validate_priority(p: i32) -> bool {
+    PRIORITY_RANGE.contains(&p)
 }
 pub fn validate_labels(labels: &[String]) -> bool {
     labels.iter().all(|l| VALID_LABELS.contains(&l.as_str()))

@@ -26,8 +26,9 @@ CREATE TABLE issues (
     title       TEXT            NOT NULL,
     status      VARCHAR         NOT NULL DEFAULT 'draft'
                     CHECK (status IN ('draft', 'next', 'doing', 'done', 'cancelled')),
-    priority    VARCHAR         NOT NULL DEFAULT 'none'
-                    CHECK (priority IN ('urgent', 'high', 'medium', 'low', 'none')),
+    priority    INTEGER         NOT NULL DEFAULT 0
+                    CHECK (priority BETWEEN 0 AND 4),
+    author_id   BIGINT          NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     assignee_id BIGINT          REFERENCES users(id) ON DELETE SET NULL,
     blocks      JSONB           NOT NULL DEFAULT '[]'::jsonb
                     CHECK (jsonb_typeof(blocks) = 'array'),
@@ -52,6 +53,7 @@ CREATE TABLE issue_relations (
 );
 
 CREATE INDEX idx_issues_project_id  ON issues(project_id);
+CREATE INDEX idx_issues_author_id   ON issues(author_id);
 CREATE INDEX idx_issues_assignee_id ON issues(assignee_id);
 CREATE INDEX idx_issues_status      ON issues(project_id, status);
 CREATE INDEX idx_projects_parent_id ON projects(parent_id);
