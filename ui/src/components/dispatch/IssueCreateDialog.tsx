@@ -22,6 +22,7 @@ import { Switch } from '#/components/ui/switch'
 
 import { IssueEditor } from './IssueEditor'
 import { createIssue, getDisplayErrorMessage, listProjects } from '#/lib/api'
+import { toast } from 'sonner'
 
 import type { IssueBodyBlock } from './IssueEditor'
 import type { ApiProject } from '#/lib/api'
@@ -130,6 +131,7 @@ export function IssueCreateDialog({
       setBlocks([])
       onCreated?.()
       onOpenChange(false)
+      toast.success('Issue created')
     } catch (err) {
       setError(getDisplayErrorMessage(err, 'Failed to create issue.'))
     } finally {
