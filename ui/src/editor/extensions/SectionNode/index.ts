@@ -7,7 +7,7 @@ export const SectionNode = Node.create({
   name: 'section',
   group: 'block',
   atom: true,
-  selectable: true,
+  selectable: false,
   draggable: false,
 
   addAttributes() {

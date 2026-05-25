@@ -124,7 +124,7 @@ export function IssueCreateDialog({
         project_id: projectId,
         title: title.trim(),
         status: 'draft',
-        blocks: blocks as unknown[],
+        blocks,
       })
       setTitle('')
       setBlocks([])

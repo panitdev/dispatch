@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { CommandPalette } from './command-palette'
 import { DetailRail } from './detail-rail'
+import { IssueCreateDialog } from './IssueCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
 
@@ -16,9 +17,16 @@ export function DispatchLayout({
   children: React.ReactNode
 }) {
   const [commandOpen, setCommandOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'n' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault()
+        setCreateOpen(true)
+        return
+      }
+
       if (event.key.toLowerCase() !== 'k' || (!event.ctrlKey && !event.metaKey)) {
         return
       }
@@ -39,7 +47,12 @@ export function DispatchLayout({
         <main className="min-w-0 flex-1 overflow-y-auto px-[18px] pt-[22px] pb-20 md:px-10 md:pt-7">
           {children}
         </main>
-        <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+        <CommandPalette
+          open={commandOpen}
+          onOpenChange={setCommandOpen}
+          onCreateIssue={() => setCreateOpen(true)}
+        />
+        <IssueCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       </section>
       <DetailRail />
     </div>
