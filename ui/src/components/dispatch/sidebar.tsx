@@ -3,24 +3,62 @@ import {
   Folder,
   Home,
   PanelLeft,
-  Pin,
   Settings,
 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { DispatchLogo } from '@/components/ui/logos'
+import { getDisplayErrorMessage, listProjects } from '@/lib/api'
 
 import { ProjectGlyph } from './primitives'
 
-import type { DispatchPage, ProjectKey } from '../../data/dispatch'
+import type { DispatchPage } from '../../data/dispatch'
+import type { ApiProject } from '@/lib/api'
 
 export function Sidebar({ active }: { active: DispatchPage }) {
+  const [projects, setProjects] = useState<ApiProject[]>([])
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true)
+  const [projectError, setProjectError] = useState<string | null>(null)
+  const projectList = useMemo(() => flattenProjects(projects), [projects])
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const activeProjectId = pathname.match(/^\/projects\/([^/]+)/)?.[1] ?? null
   const nav = [
     { label: 'Now' as const, to: '/', icon: Home },
     { label: 'Projects' as const, to: '/projects', icon: Folder },
     { label: 'Drafts' as const, to: '/drafts', icon: FilePenLine },
   ]
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    setIsLoadingProjects(true)
+    setProjectError(null)
+
+    listProjects({ signal: controller.signal })
+      .then((nextProjects) => {
+        setProjects(nextProjects)
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+
+        setProjectError(
+          getDisplayErrorMessage(error, 'Failed to load projects.'),
+        )
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoadingProjects(false)
+        }
+      })
+
+    return () => controller.abort()
+  }, [])
 
   return (
     <aside className="hidden min-h-0 flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3 md:flex">
@@ -49,23 +87,31 @@ export function Sidebar({ active }: { active: DispatchPage }) {
             >
               <Icon size={16} className="shrink-0 opacity-85" />
               <span>{item.label}</span>
-              {'count' in item && (
-                <span className="ml-auto rounded-full bg-[var(--dispatch-bg-hover)] px-[7px] py-px text-[11px] font-semibold text-[var(--dispatch-text-tertiary)]">
-                  {item.count}
-                </span>
-              )}
             </Link>
           )
         })}
       </nav>
 
       <div className="px-3 pt-3.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.12em] text-[var(--dispatch-text-quaternary)] uppercase">
-        Pinned
+        Projects
       </div>
-      <div className="flex flex-col gap-0.5">
-        <PinnedProject letter="S" name="Strophe" projectKey="s" />
-        <PinnedProject letter="R" name="Registry" projectKey="r" />
-        <PinnedProject letter="V" name="Vault" projectKey="v" />
+      <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto pr-1">
+        {isLoadingProjects ? (
+          <SidebarProjectState>Loading projects...</SidebarProjectState>
+        ) : projectError ? (
+          <SidebarProjectState>{projectError}</SidebarProjectState>
+        ) : projectList.length === 0 ? (
+          <SidebarProjectState>No projects yet.</SidebarProjectState>
+        ) : (
+          projectList.map(({ project, depth }) => (
+            <SidebarProject
+              key={project.id}
+              project={project}
+              depth={depth}
+              active={project.id === activeProjectId}
+            />
+          ))
+        )}
       </div>
 
       <div className="flex-1" />
@@ -97,25 +143,42 @@ function SidebarLogo() {
   )
 }
 
-function PinnedProject({
-  letter,
-  name,
-  projectKey,
+function SidebarProject({
+  project,
+  depth,
+  active,
 }: {
-  letter: string
-  name: string
-  projectKey: ProjectKey
+  project: ApiProject
+  depth: number
+  active: boolean
 }) {
   return (
-    <div className="group flex cursor-pointer items-center gap-2.5 rounded-[var(--dispatch-r-md)] px-2.5 py-1.5 transition-colors hover:bg-[var(--dispatch-bg-hover)]">
-      <ProjectGlyph letter={letter} projectKey={projectKey} small />
-      <span className="text-[13px] font-medium text-[var(--dispatch-text-secondary)]">
-        {name}
-      </span>
-      <Pin
-        size={14}
-        className="ml-auto text-[var(--dispatch-text-quaternary)] opacity-50 transition-opacity group-hover:opacity-100"
+    <Link
+      to="/projects/$projectId"
+      params={{ projectId: project.id }}
+      className={`${projectItemClass(active)} ${depth > 0 && !active ? 'text-[var(--dispatch-text-tertiary)]' : ''}`}
+      style={{
+        paddingLeft: `${10 + depth * 14}px`,
+      }}
+    >
+      <ProjectGlyph
+        letter={project.key.charAt(0)}
+        projectKey={project.key}
+        color={project.color}
+        small
       />
+      <span className="truncate">{project.name}</span>
+      <span className="ml-auto truncate text-[11px] font-semibold text-[var(--dispatch-text-quaternary)] uppercase">
+        {project.key}
+      </span>
+    </Link>
+  )
+}
+
+function SidebarProjectState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-2.5 py-1.5 text-[12px] leading-[1.45] text-[var(--dispatch-text-tertiary)]">
+      {children}
     </div>
   )
 }
@@ -129,4 +192,25 @@ function navItemClass(active: boolean) {
   }
 
   return `${base} text-[var(--dispatch-text-secondary)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-primary)]`
+}
+
+function projectItemClass(active: boolean) {
+  const base =
+    'flex cursor-pointer items-center gap-2.5 rounded-[var(--dispatch-r-md)] py-1.5 pr-2.5 text-[13px] font-medium no-underline transition-colors'
+
+  if (active) {
+    return `${base} bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-primary)] shadow-[0_0_0_1px_var(--dispatch-border)_inset]`
+  }
+
+  return `${base} text-[var(--dispatch-text-secondary)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-primary)]`
+}
+
+function flattenProjects(
+  projects: ApiProject[],
+  depth = 0,
+): Array<{ project: ApiProject; depth: number }> {
+  return projects.flatMap((project) => [
+    { project, depth },
+    ...flattenProjects(project.sub_projects, depth + 1),
+  ])
 }
