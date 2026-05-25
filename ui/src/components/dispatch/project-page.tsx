@@ -199,7 +199,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
       </div>
 
       {/* ── Issue list ────────────────────────────────────────────────────── */}
-      <div className="px-[18px] md:px-10">
+      <div>
         {visibleIssues.length === 0 ? (
           <div className="py-16 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
             No issues in this filter.
@@ -329,7 +329,7 @@ export function ProjectPageSkeleton() {
           <Skeleton key={i} className="h-7 w-20 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
         ))}
       </div>
-      <div className="px-[18px] md:px-10">
+      <div>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 border-b border-[var(--dispatch-border-soft)] py-3">
             <Skeleton className="h-3.5 w-3.5 rounded-[3px] bg-[var(--dispatch-bg-hover)]" />

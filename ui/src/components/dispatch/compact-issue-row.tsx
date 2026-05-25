@@ -178,7 +178,7 @@ export function CompactIssueRow({
   date,
 }: CompactIssueRowData) {
   return (
-    <div className="group flex items-center gap-2 px-3 py-[7px] cursor-pointer transition-colors hover:bg-[var(--dispatch-bg-hover)]">
+    <div className="group flex items-center gap-2 px-6 py-[7px] cursor-pointer transition-colors hover:bg-[var(--dispatch-bg-hover)]">
       {/* Priority */}
       <PriorityIcon priority={priority} />
 
