@@ -208,8 +208,13 @@ pub async fn get_new_issues(
 pub async fn create_issue(
     identity: KratosIdentity,
     State(state): State<AppState>,
+    Path(project_id): Path<String>,
     Json(body): Json<CreateIssueRequest>,
 ) -> ApiResult<(StatusCode, Json<IssueResponse>)> {
+    let project_id: i64 = project_id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid project_id".into()))?;
+
     if !validate_status(&body.status) {
         return Err(AppError::BadRequest(format!(
             "invalid status: {}",
@@ -225,11 +230,6 @@ pub async fn create_issue(
     if !validate_labels(&body.labels) {
         return Err(AppError::BadRequest("one or more invalid labels".into()));
     }
-
-    let project_id: i64 = body
-        .project_id
-        .parse()
-        .map_err(|_| AppError::BadRequest("invalid project_id".into()))?;
 
     let parent_id = body
         .parent_id

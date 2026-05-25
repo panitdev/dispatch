@@ -81,7 +81,6 @@ pub struct IssueBodyBlock {
 
 #[derive(Deserialize)]
 pub struct CreateIssueRequest {
-    pub project_id: String,
     pub title: String,
     #[serde(default = "default_status")]
     pub status: String,

@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::get,
     Router,
 };
 
@@ -28,8 +28,10 @@ pub fn router() -> Router<AppState> {
                         .patch(projects::update_project)
                         .delete(projects::delete_project),
                 )
-                .route("/projects/{id}/issues", get(issues::list_project_issues))
-                .route("/issues", post(issues::create_issue))
+                .route(
+                    "/projects/{id}/issues",
+                    get(issues::list_project_issues).post(issues::create_issue),
+                )
                 .route(
                     "/issues/{id}",
                     get(issues::get_issue)
