@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { MoreHorizontal, Share2, SlidersHorizontal, Filter, Star } from 'lucide-react'
+import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CompactIssueRow } from './compact-issue-row'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
 import type { ProjectPageData } from '@/lib/server-data'
@@ -12,19 +13,6 @@ import type { ProjectPageData } from '@/lib/server-data'
 type FilterTab = 'all' | 'active' | 'backlog' | 'drafts'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<string, { label: string; color: 'cobalt' | 'amber' | 'green' | 'muted' }> = {
-  doing: { label: 'In Progress', color: 'cobalt' },
-  next: { label: 'In Review', color: 'amber' },
-  done: { label: 'Done', color: 'green' },
-  todo: { label: 'To Do', color: 'muted' },
-  draft: { label: 'Draft', color: 'muted' },
-  backlog: { label: 'Backlog', color: 'muted' },
-}
-
-function getStatusConfig(status: string) {
-  return STATUS_CONFIG[status.toLowerCase()] ?? { label: status, color: 'muted' as const }
-}
 
 function filterIssues(issues: ApiIssue[], filter: FilterTab): ApiIssue[] {
   switch (filter) {
@@ -37,18 +25,6 @@ function filterIssues(issues: ApiIssue[], filter: FilterTab): ApiIssue[] {
     default:
       return issues
   }
-}
-
-function labelColorStyle(label: string): React.CSSProperties {
-  const hash = label.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) & 0xffff, 0)
-  const palettes: React.CSSProperties[] = [
-    { background: 'var(--dispatch-cobalt-12)', borderColor: 'var(--dispatch-cobalt-30)', color: 'var(--dispatch-cobalt-bright)' },
-    { background: 'var(--dispatch-green-12)', borderColor: 'var(--dispatch-green-30)', color: 'var(--dispatch-green)' },
-    { background: 'var(--dispatch-amber-12)', borderColor: 'var(--dispatch-amber-30)', color: 'var(--dispatch-amber)' },
-    { background: 'var(--dispatch-rust-12)', borderColor: 'var(--dispatch-rust-30)', color: 'var(--dispatch-rust)' },
-    { background: 'var(--dispatch-bg-elevated)', borderColor: 'var(--dispatch-border)', color: 'var(--dispatch-text-secondary)' },
-  ]
-  return palettes[hash % palettes.length]
 }
 
 function formatDate(dateStr: string): string {
@@ -222,36 +198,30 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
         </div>
       </div>
 
-      {/* ── Issue table ───────────────────────────────────────────────────── */}
+      {/* ── Issue list ────────────────────────────────────────────────────── */}
       <div className="px-[18px] md:px-10">
-        {/* Table header */}
-        <div className="hidden items-center gap-4 border-b border-[var(--dispatch-border-soft)] py-2 md:grid md:grid-cols-[20px_88px_minmax(0,1fr)_180px_120px_70px_28px]">
-          <div />
-          <div className="text-[11px] font-semibold tracking-[0.06em] text-[var(--dispatch-text-quaternary)] uppercase">
-            Key
-          </div>
-          <div className="text-[11px] font-semibold tracking-[0.06em] text-[var(--dispatch-text-quaternary)] uppercase">
-            Title
-          </div>
-          <div className="text-[11px] font-semibold tracking-[0.06em] text-[var(--dispatch-text-quaternary)] uppercase">
-            Labels
-          </div>
-          <div className="text-[11px] font-semibold tracking-[0.06em] text-[var(--dispatch-text-quaternary)] uppercase">
-            Status
-          </div>
-          <div className="text-[11px] font-semibold tracking-[0.06em] text-[var(--dispatch-text-quaternary)] uppercase">
-            Updated
-          </div>
-          <div />
-        </div>
-
-        {/* Issue rows */}
         {visibleIssues.length === 0 ? (
           <div className="py-16 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
             No issues in this filter.
           </div>
         ) : (
-          visibleIssues.map((issue) => <IssueRow key={issue.id} issue={issue} />)
+          <div>
+            {visibleIssues.map((issue) => (
+              <div
+                key={issue.id}
+                className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
+              >
+                <CompactIssueRow
+                  issueKey={issue.key}
+                  status={issue.status}
+                  priority={issue.priority}
+                  title={issue.title}
+                  labels={issue.labels}
+                  date={issue.updated_at}
+                />
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Bottom sentinel for infinite scroll */}
@@ -270,82 +240,6 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
           </div>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-// ─── Issue row ────────────────────────────────────────────────────────────────
-
-function IssueRow({ issue }: { issue: ApiIssue }) {
-  const { label, color } = getStatusConfig(issue.status)
-
-  return (
-    <div className="group relative grid cursor-pointer items-center gap-4 border-b border-[var(--dispatch-border-soft)] py-3 transition-colors last:border-b-0 hover:bg-[var(--dispatch-bg-hover)] grid-cols-[20px_minmax(0,1fr)_28px] md:grid-cols-[20px_88px_minmax(0,1fr)_180px_120px_70px_28px]">
-      {/* Checkbox */}
-      <div className="flex justify-center">
-        <span className="block h-[14px] w-[14px] rounded-[3px] border border-[var(--dispatch-border)] bg-transparent transition-colors group-hover:border-[var(--dispatch-border-strong)]" />
-      </div>
-
-      {/* Key — hidden on mobile, shown on md+ */}
-      <div className="hidden md:block">
-        <span className="font-mono text-[11.5px] font-medium tracking-[0.03em] text-[var(--dispatch-text-quaternary)]">
-          {issue.key}
-        </span>
-      </div>
-
-      {/* Title (+ key on mobile) */}
-      <div className="min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[11px] text-[var(--dispatch-text-quaternary)] md:hidden">
-            {issue.key}
-          </span>
-          <span className="truncate text-[13.5px] font-medium tracking-[-0.005em] text-[var(--dispatch-text-primary)]">
-            {issue.title}
-          </span>
-        </div>
-        {/* Labels on mobile */}
-        {issue.labels.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1 md:hidden">
-            {issue.labels.slice(0, 3).map((label) => (
-              <LabelPill key={label} label={label} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Labels — desktop */}
-      <div className="hidden items-center gap-1.5 md:flex">
-        {issue.labels.slice(0, 3).map((lbl) => (
-          <LabelPill key={lbl} label={lbl} />
-        ))}
-        {issue.labels.length > 3 && (
-          <span className="text-[11px] text-[var(--dispatch-text-quaternary)]">
-            +{issue.labels.length - 3}
-          </span>
-        )}
-      </div>
-
-      {/* Status — desktop */}
-      <div className="hidden items-center gap-2 md:flex">
-        <StatusDot color={color} />
-        <span className="text-[12.5px] text-[var(--dispatch-text-secondary)]">{label}</span>
-      </div>
-
-      {/* Updated — desktop */}
-      <div className="hidden md:block">
-        <span className="text-[12px] tabular-nums text-[var(--dispatch-text-tertiary)]">
-          {formatDate(issue.updated_at)}
-        </span>
-      </div>
-
-      {/* Actions */}
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        className="opacity-0 text-[var(--dispatch-text-tertiary)] group-hover:opacity-100"
-      >
-        <MoreHorizontal size={14} />
-      </Button>
     </div>
   )
 }
@@ -410,29 +304,6 @@ function FilterTabItem({
       </span>
     </button>
   )
-}
-
-function LabelPill({ label }: { label: string }) {
-  const style = labelColorStyle(label)
-  return (
-    <span
-      className="inline-flex items-center rounded-[4px] border px-[6px] py-[2px] text-[11px] font-medium leading-[1.4]"
-      style={style}
-    >
-      {label}
-    </span>
-  )
-}
-
-function StatusDot({ color }: { color: 'cobalt' | 'amber' | 'green' | 'muted' }) {
-  const cls = {
-    cobalt: 'bg-[var(--dispatch-cobalt-bright)] shadow-[0_0_0_3px_var(--dispatch-cobalt-12)]',
-    amber: 'bg-[var(--dispatch-amber)] shadow-[0_0_0_3px_var(--dispatch-amber-12)]',
-    green: 'bg-[var(--dispatch-green)] shadow-[0_0_0_3px_var(--dispatch-green-12)]',
-    muted: 'bg-transparent border border-[var(--dispatch-text-quaternary)]',
-  }[color]
-
-  return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${cls}`} />
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
