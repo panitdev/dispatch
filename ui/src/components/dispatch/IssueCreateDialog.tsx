@@ -129,6 +129,7 @@ export function IssueCreateDialog({
       setTitle('')
       setBlocks([])
       onCreated?.()
+      onOpenChange(false)
     } catch (err) {
       setError(getDisplayErrorMessage(err, 'Failed to create issue.'))
     } finally {
