@@ -8,6 +8,7 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use crate::{
     auth::kratos::KratosIdentity,
@@ -68,6 +69,7 @@ pub async fn list_project_issues(
     Path(project_id): Path<String>,
     Query(query): Query<ListIssuesQuery>,
 ) -> ApiResult<Json<Vec<IssueResponse>>> {
+    let started_at = Instant::now();
     let pid: i64 = project_id
         .parse()
         .map_err(|_| AppError::BadRequest("invalid project id".into()))?;
@@ -94,6 +96,15 @@ pub async fn list_project_issues(
         responses.push(IssueResponse::new(issue, labels, relations));
     }
 
+    tracing::info!(
+        target: "api",
+        elapsed_ms = started_at.elapsed().as_millis(),
+        project_id = pid,
+        status = query.status.as_deref().unwrap_or("all"),
+        count = responses.len(),
+        "list_project_issues"
+    );
+
     Ok(Json(responses))
 }
 
@@ -101,6 +112,7 @@ pub async fn get_new_issues(
     identity: KratosIdentity,
     State(state): State<AppState>,
 ) -> ApiResult<Json<NewIssuesResponse>> {
+    let started_at = Instant::now();
     let user = identity.resolve_user(&state).await?;
     let mut conn = state.db.get().await?;
 
@@ -175,6 +187,16 @@ pub async fn get_new_issues(
             })
             .collect()
     };
+
+    tracing::info!(
+        target: "api",
+        elapsed_ms = started_at.elapsed().as_millis(),
+        user_id = user.id,
+        continue_count = continue_rows.len(),
+        next_count = next_rows.len(),
+        draft_count = draft_rows.len(),
+        "get_new_issues"
+    );
 
     Ok(Json(NewIssuesResponse {
         r#continue: summarize(continue_rows),

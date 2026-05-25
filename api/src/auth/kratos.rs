@@ -6,6 +6,7 @@ use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use reqwest::Client;
 use serde::Deserialize;
+use std::time::Instant;
 use uuid::Uuid;
 
 use crate::{
@@ -53,6 +54,7 @@ where
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let started_at = Instant::now();
         let config = Config::from_ref(state);
         let http = Client::from_ref(state);
 
@@ -78,6 +80,13 @@ where
             .unwrap_or(false);
 
         if !has_session_cookie && !has_bearer {
+            tracing::info!(
+                target: "api",
+                elapsed_ms = started_at.elapsed().as_millis(),
+                has_cookie = has_session_cookie,
+                has_bearer = has_bearer,
+                "kratos_identity rejected before whoami"
+            );
             return Err(AppError::Unauthorized(
                 "missing session cookie or Bearer token".into(),
             ));
@@ -93,7 +102,14 @@ where
             req = req.header(header::AUTHORIZATION, auth);
         }
 
+        let whoami_started_at = Instant::now();
         let resp = req.send().await.map_err(AppError::Http)?;
+        tracing::info!(
+            target: "api",
+            elapsed_ms = whoami_started_at.elapsed().as_millis(),
+            status = %resp.status(),
+            "kratos whoami request"
+        );
 
         if resp.status() == reqwest::StatusCode::UNAUTHORIZED
             || resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -110,6 +126,13 @@ where
         let payload: WhoAmIResponse = resp.json().await.map_err(|_| {
             AppError::Unauthorized("unexpected response from identity provider".into())
         })?;
+
+        tracing::info!(
+            target: "api",
+            elapsed_ms = started_at.elapsed().as_millis(),
+            username = %payload.identity.traits.username,
+            "kratos identity extracted"
+        );
 
         Ok(KratosIdentity {
             session_id: payload.id,

@@ -6,6 +6,7 @@ use axum::{
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+use std::time::Instant;
 
 use crate::{
     auth::kratos::KratosIdentity,
@@ -22,11 +23,18 @@ pub async fn list_projects(
     _identity: KratosIdentity,
     State(state): State<AppState>,
 ) -> ApiResult<Json<Vec<ProjectResponse>>> {
+    let started_at = Instant::now();
     let mut conn = state.db.get().await?;
     let all: Vec<Project> = projects::table
         .order(projects::created_at.asc())
         .load(&mut conn)
         .await?;
+    tracing::info!(
+        target: "api",
+        elapsed_ms = started_at.elapsed().as_millis(),
+        count = all.len(),
+        "list_projects"
+    );
     Ok(Json(build_project_tree(all)))
 }
 

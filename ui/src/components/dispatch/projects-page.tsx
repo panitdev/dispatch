@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AnimatedField } from '@/components/ui/animated-field'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -23,13 +24,14 @@ import { PageHead } from './page-head'
 import { ProjectGlyph, StatusPill } from './primitives'
 import {
   createProject,
-  listProjectIssues,
-  listProjects,
+  getDisplayErrorMessage,
 } from '@/lib/api'
+import { getProjectsPageData } from '@/lib/server-data'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
+import type { ProjectsPageData } from '@/lib/server-data'
 import type { FormEvent } from 'react'
 
 function validateProjectKey(value: string) {
@@ -54,10 +56,12 @@ function validateProjectName(value: string) {
 
 const NO_PARENT_PROJECT = '__none__'
 
-export function ProjectsPage() {
-  const [projects, setProjects] = useState<ApiProject[]>([])
-  const [issuesByProjectId, setIssuesByProjectId] = useState<Record<string, ApiIssue[]>>({})
-  const [isLoading, setIsLoading] = useState(true)
+export function ProjectsPage({ data }: { data: ProjectsPageData }) {
+  const [projects, setProjects] = useState<ApiProject[]>(data.projects)
+  const [issuesByProjectId, setIssuesByProjectId] = useState<Record<string, ApiIssue[]>>(
+    data.issuesByProjectId,
+  )
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -68,32 +72,16 @@ export function ProjectsPage() {
 
   const projectList = flattenProjects(projects)
 
-  useEffect(() => {
-    void loadProjects()
-  }, [])
-
   async function loadProjects() {
     setIsLoading(true)
     setError(null)
 
     try {
-      const projectTree = await listProjects()
-      const flatProjects = flattenProjects(projectTree)
-      const issueLists = await Promise.all(
-        flatProjects.map(async ({ project }) => [
-          project.id,
-          await listProjectIssues(project.id),
-        ] as const),
-      )
-
-      setProjects(projectTree)
-      setIssuesByProjectId(Object.fromEntries(issueLists))
+      const nextData = await getProjectsPageData()
+      setProjects(nextData.projects)
+      setIssuesByProjectId(nextData.issuesByProjectId)
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : 'Failed to load projects.',
-      )
+      setError(getDisplayErrorMessage(loadError, 'Failed to load projects.'))
     } finally {
       setIsLoading(false)
     }
@@ -117,11 +105,7 @@ export function ProjectsPage() {
       setParentId('')
       await loadProjects()
     } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : 'Failed to create project.',
-      )
+      setError(getDisplayErrorMessage(createError, 'Failed to create project.'))
     } finally {
       setIsCreating(false)
     }
@@ -299,6 +283,51 @@ export function ProjectsPage() {
           </form>
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
+
+export function ProjectsPageSkeleton() {
+  return (
+    <>
+      <PageHead
+        title={pageCopy.Projects.title}
+        subtitle={pageCopy.Projects.subtitle}
+        action={<Skeleton className="h-9 w-28 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />}
+      />
+      <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <section
+            className="flex min-h-[190px] flex-col gap-4 rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] p-[18px] shadow-[var(--dispatch-shadow-card)]"
+            key={index}
+          >
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="h-10 w-10 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-28 bg-[var(--dispatch-bg-hover)]" />
+                <Skeleton className="h-3 w-20 bg-[var(--dispatch-bg-hover)]" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-3/4 bg-[var(--dispatch-bg-hover)]" />
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-16 rounded-full bg-[var(--dispatch-bg-hover)]" />
+              <Skeleton className="h-6 w-14 rounded-full bg-[var(--dispatch-bg-hover)]" />
+            </div>
+            <div className="mt-auto space-y-2.5 border-t border-[var(--dispatch-border-soft)] pt-3">
+              <Skeleton className="h-3 w-12 bg-[var(--dispatch-bg-hover)]" />
+              {Array.from({ length: 3 }).map((__, issueIndex) => (
+                <div className="flex items-center gap-2.5" key={issueIndex}>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-4/5 bg-[var(--dispatch-bg-hover)]" />
+                    <Skeleton className="h-3 w-1/3 bg-[var(--dispatch-bg-hover)]" />
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full bg-[var(--dispatch-bg-hover)]" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </>
   )
 }
