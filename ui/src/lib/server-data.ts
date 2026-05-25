@@ -3,6 +3,7 @@ import { getRequestHeader } from '@tanstack/react-start/server'
 
 import {
   getNow,
+  getProject,
   listProjectIssues,
   listProjects,
 } from './api'
@@ -12,6 +13,11 @@ import type { ApiIssue, ApiProject } from './api'
 export type ProjectsPageData = {
   projects: ApiProject[]
   issuesByProjectId: Record<string, ApiIssue[]>
+}
+
+export type ProjectPageData = {
+  project: ApiProject
+  issues: ApiIssue[]
 }
 
 export const getNowPageData = createServerFn({ method: 'GET' }).handler(
@@ -59,6 +65,23 @@ export const getProjectsPageData = createServerFn({ method: 'GET' }).handler(
     }
   },
 )
+
+export const getProjectPageData = createServerFn({ method: 'GET', strict: false })
+  .inputValidator((d: unknown) => d as { projectId: string })
+  .handler(async ({ data }) => {
+    const { projectId } = data
+    const done = startTiming('getProjectPageData')
+    const init = withForwardedAuthHeaders()
+    try {
+      const [project, issues] = await Promise.all([
+        getProject(projectId, init),
+        listProjectIssues(projectId, undefined, init),
+      ])
+      return { project, issues } as ProjectPageData
+    } finally {
+      done()
+    }
+  })
 
 function flattenProjects(projects: ApiProject[]): ApiProject[] {
   return projects.flatMap((project) => [

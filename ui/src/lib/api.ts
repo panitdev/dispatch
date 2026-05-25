@@ -186,6 +186,10 @@ export function listProjects(init?: RequestInit) {
   return apiFetch<ApiProject[]>('/api/v1/projects', init)
 }
 
+export function getProject(projectId: string, init?: RequestInit) {
+  return apiFetch<ApiProject>(`/api/v1/projects/${projectId}`, init)
+}
+
 export function listProjectIssues(
   projectId: string,
   status?: string,

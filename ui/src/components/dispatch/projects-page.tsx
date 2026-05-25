@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -138,8 +139,10 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
 
       <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
         {projectList.map(({ project, depth }) => (
-          <section
-            className="flex min-h-[190px] flex-col gap-4 rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] p-[18px] shadow-[var(--dispatch-shadow-card)]"
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: project.id }}
+            className="flex min-h-[190px] flex-col gap-4 rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] p-[18px] shadow-[var(--dispatch-shadow-card)] no-underline transition-colors hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)]"
             key={project.id}
           >
             <div className="flex items-center gap-2.5">
@@ -193,7 +196,7 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
                 ))
               )}
             </div>
-          </section>
+          </Link>
         ))}
       </div>
 
