@@ -2,11 +2,14 @@ import { MoreHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
+import { useIssueSelection } from './issue-selection-context'
 import { ProjectChip, StatusPill } from './primitives'
 
 import type { Issue, Section } from '../../data/dispatch'
 
 export function IssueSection({ section }: { section: Section }) {
+  const { selectedIssueId, selectIssue } = useIssueSelection()
+
   return (
     <section className="mb-[18px] overflow-hidden rounded-[var(--dispatch-r-xl)] border border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] shadow-[var(--dispatch-shadow-card)]">
       <div className="flex items-center gap-2.5 border-b border-[var(--dispatch-border-soft)] bg-[linear-gradient(180deg,var(--dispatch-section-head-grad-top)_0%,var(--dispatch-bg-surface)_100%)] px-[18px] py-[13px]">
@@ -28,6 +31,8 @@ export function IssueSection({ section }: { section: Section }) {
           <IssueRow
             key={issue.id ?? `${section.title}-${issue.title}-${index}`}
             issue={issue}
+            selected={issue.id ? issue.id === selectedIssueId : issue.active}
+            onSelect={issue.id ? () => selectIssue(issue.id!) : undefined}
           />
         ))
       )}
@@ -35,10 +40,29 @@ export function IssueSection({ section }: { section: Section }) {
   )
 }
 
-function IssueRow({ issue }: { issue: Issue }) {
+function IssueRow({
+  issue,
+  selected,
+  onSelect,
+}: {
+  issue: Issue
+  selected?: boolean
+  onSelect?: () => void
+}) {
   return (
     <div
-      className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${issue.active ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) {
+          return
+        }
+        event.preventDefault()
+        onSelect()
+      }}
+      className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${selected ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
     >
       <div className={dotClass(issue.dot)} />
       <div className="min-w-0">
@@ -59,6 +83,7 @@ function IssueRow({ issue }: { issue: Issue }) {
         variant="ghost"
         size="icon-xs"
         className="opacity-100 md:opacity-0 md:group-hover:opacity-100"
+        onClick={(event) => event.stopPropagation()}
       >
         <MoreHorizontal size={16} />
       </Button>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 import { IssueCreateDialog } from './IssueCreateDialog'
+import { useIssueSelection } from './issue-selection-context'
 import { PageHead } from './page-head'
 import { WorkListPage } from './work-list-page'
 
@@ -15,12 +16,15 @@ import type { Issue, Section } from '../../data/dispatch'
 
 export function NowPage({ data }: { data: ApiNowResponse }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const { selectedIssueId } = useIssueSelection()
 
   const sections: Section[] = [
     {
       title: 'Continue',
       icon: <Play size={14} />,
-      issues: data.continue.map((issue, index) => mapNowIssue(issue, index === 0)),
+      issues: data.continue.map((issue) =>
+        mapNowIssue(issue, issue.id === selectedIssueId),
+      ),
     },
     {
       title: 'Next',
@@ -98,6 +102,8 @@ export function NowPageSkeleton() {
 
 function mapNowIssue(issue: ApiNowIssue, active = false): Issue {
   return {
+    id: issue.id,
+    key: issue.key,
     title: issue.title,
     sub:
       issue.description ??

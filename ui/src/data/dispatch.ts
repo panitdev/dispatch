@@ -10,6 +10,7 @@ export type DispatchPage =
 
 export type Issue = {
   id?: string
+  key?: string
   title: string
   sub: string
   project: string

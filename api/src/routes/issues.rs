@@ -48,6 +48,8 @@ pub struct NewIssuesResponse {
 
 #[derive(Serialize)]
 pub struct NowIssueSummary {
+    pub id: String,
+    pub key: String,
     pub title: String,
     pub description: Option<String>,
     pub project: NowProjectSummary,
@@ -174,6 +176,8 @@ pub async fn get_new_issues(
     let mut summarize = |rows: Vec<(Issue, Project)>| {
         rows.into_iter()
             .map(|(issue, project)| NowIssueSummary {
+                id: issue.id.to_string(),
+                key: issue.key,
                 title: issue.title,
                 description: None,
                 project: NowProjectSummary {

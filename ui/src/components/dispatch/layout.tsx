@@ -3,6 +3,10 @@ import { useEffect, useState } from 'react'
 
 import { CommandPalette } from './command-palette'
 import { DetailRail } from './detail-rail'
+import {
+  IssueSelectionProvider,
+  useIssueSelection,
+} from './issue-selection-context'
 import { IssueCreateDialog } from './IssueCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
@@ -15,11 +19,25 @@ export function DispatchLayout({
 }: {
   children: React.ReactNode
 }) {
+  return (
+    <IssueSelectionProvider>
+      <DispatchLayoutContent>{children}</DispatchLayoutContent>
+    </IssueSelectionProvider>
+  )
+}
+
+function DispatchLayoutContent({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const { selectedIssueId } = useIssueSelection()
   const active = useRouterState({
     select: (state) => getActivePage(state.location.pathname),
   })
+  const showDetailRail = active !== 'Settings' && selectedIssueId !== null
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -42,7 +60,9 @@ export function DispatchLayout({
   }, [])
 
   return (
-    <div className="dispatch-theme grid h-screen w-screen grid-cols-1 overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)] md:grid-cols-[232px_minmax(0,1fr)] lg:grid-cols-[232px_minmax(0,1fr)_380px]">
+    <div
+      className={`dispatch-theme grid h-screen w-screen grid-cols-1 overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)] md:grid-cols-[232px_minmax(0,1fr)] ${showDetailRail ? 'lg:grid-cols-[232px_minmax(0,1fr)_380px]' : ''}`}
+    >
       <Sidebar active={active} />
       <section className="relative flex h-screen min-w-0 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
         <TopBar onOpenCommand={() => setCommandOpen(true)} />
@@ -56,7 +76,7 @@ export function DispatchLayout({
         />
         <IssueCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       </section>
-      <DetailRail />
+      {showDetailRail ? <DetailRail /> : null}
     </div>
   )
 }

@@ -167,6 +167,8 @@ export type CompactIssueRowData = {
   title: string
   labels?: string[]
   date?: string
+  selected?: boolean
+  onSelect?: () => void
 }
 
 export function CompactIssueRow({
@@ -176,9 +178,24 @@ export function CompactIssueRow({
   title,
   labels = [],
   date,
+  selected,
+  onSelect,
 }: CompactIssueRowData) {
   return (
-    <div className="group flex items-center gap-2 px-6 py-[7px] cursor-pointer transition-colors hover:bg-[var(--dispatch-bg-hover)]">
+    <div
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) {
+          return
+        }
+        event.preventDefault()
+        onSelect()
+      }}
+      className={`group flex cursor-pointer items-center gap-2 px-6 py-[7px] transition-colors hover:bg-[var(--dispatch-bg-hover)] ${selected ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)]' : ''}`}
+    >
       {/* Priority */}
       <PriorityIcon priority={priority} />
 
@@ -228,6 +245,7 @@ export function CompactIssueRow({
         variant="ghost"
         size="icon-xs"
         className="shrink-0 opacity-0 text-[var(--dispatch-text-tertiary)] transition-opacity group-hover:opacity-100"
+        onClick={(event) => event.stopPropagation()}
       >
         <MoreHorizontal size={14} />
       </Button>

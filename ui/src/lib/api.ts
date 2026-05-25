@@ -1,4 +1,6 @@
 export type ApiNowIssue = {
+  id: string
+  key: string
   title: string
   description: string | null
   project: {
@@ -38,12 +40,28 @@ export type ApiIssue = {
   priority: number
   labels: string[]
   assignee_id: string | null
-  blocks: unknown[]
+  blocks: IssueBodyBlock[]
   created_at: string
   updated_at: string
   blocked_by: string[]
   related_to: string[]
 }
+
+export type IssueBodyBlock = {
+  id: string
+  kind: string
+  title?: string
+  content: string
+  metadata?: JsonValue
+}
+
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
 
 export type CreateProjectInput = {
   key: string
@@ -197,6 +215,10 @@ export function listProjectIssues(
 ) {
   const params = status ? `?status=${encodeURIComponent(status)}` : ''
   return apiFetch<ApiIssue[]>(`/api/v1/projects/${projectId}/issues${params}`, init)
+}
+
+export function getIssue(issueId: string, init?: RequestInit) {
+  return apiFetch<ApiIssue>(`/api/v1/issues/${issueId}`, init)
 }
 
 export function createProject(input: CreateProjectInput) {

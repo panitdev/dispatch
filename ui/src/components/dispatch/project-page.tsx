@@ -4,6 +4,7 @@ import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star } from 'lucide-
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CompactIssueRow } from './compact-issue-row'
+import { useIssueSelection } from './issue-selection-context'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
 import type { ProjectPageData } from '@/lib/server-data'
@@ -52,6 +53,7 @@ const PAGE_SIZE = 25
 
 export function ProjectPage({ data }: { data: ProjectPageData }) {
   const { project, issues } = data
+  const { selectedIssueId, selectIssue } = useIssueSelection()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -218,6 +220,8 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
                   title={issue.title}
                   labels={issue.labels}
                   date={issue.updated_at}
+                  selected={issue.id === selectedIssueId}
+                  onSelect={() => selectIssue(issue.id)}
                 />
               </div>
             ))}
@@ -247,7 +251,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ProjectHeaderGlyph({ project }: { project: ApiProject }) {
-  const color = project.color ?? '#5b5bd6'
+  const color = project.color
   return (
     <span
       className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[12px] text-[22px] font-bold tracking-[-0.02em] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.15)_inset,0_2px_8px_rgba(0,0,0,0.35)]"
