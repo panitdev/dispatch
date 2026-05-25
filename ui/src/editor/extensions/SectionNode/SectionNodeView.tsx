@@ -24,13 +24,13 @@ export function SectionNodeView({
       as="div"
       data-kind={node.attrs.kind}
       contentEditable={false}
-      className={`section-node${selected ? ' section-node--selected' : ''}`}
+      className={`group flex items-center gap-2 mt-[18px] mb-2 select-none text-[var(--dispatch-text-primary)] text-[13.5px] font-bold tracking-normal leading-[1.3] normal-case${selected ? ' outline outline-1 outline-[var(--dispatch-cobalt-30)] rounded' : ''}`}
     >
-      <BookOpen className="section-node__icon" size={16} strokeWidth={2} />
-      <span className="section-node__title">{title}</span>
+      <BookOpen className="text-[var(--dispatch-cobalt-bright)] shrink-0" size={16} strokeWidth={2} />
+      <span className="cursor-default flex-1">{title}</span>
 
       <button
-        className="section-node__delete"
+        className="ml-auto opacity-0 group-hover:opacity-60 bg-transparent cursor-pointer text-inherit text-sm leading-none px-0.5 py-0"
         onClick={deleteNode}
         tabIndex={-1}
         aria-label="Remove section"

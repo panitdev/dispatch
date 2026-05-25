@@ -308,19 +308,7 @@ button {
   background: var(--dispatch-bg-hover);
 }
 
-/* ─── Issue Editor ─── */
-
-.issue-editor-wrap {
-  min-height: 160px;
-}
-
-.issue-editor {
-  outline: none;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--dispatch-text-primary);
-  caret-color: var(--dispatch-cobalt-bright);
-}
+/* ─── Issue Editor (TipTap content overrides) ─── */
 
 .issue-editor p {
   margin: 0 0 0.5em;
@@ -437,55 +425,6 @@ button {
   font-style: italic;
 }
 
-/* ─── Section Node (ghost header) ─── */
-
-.section-node {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 18px 0 8px;
-  padding: 0;
-  user-select: none;
-  color: var(--dispatch-text-primary);
-  font-size: 13.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.3;
-  text-transform: none;
-}
-
-.section-node__icon {
-  color: var(--dispatch-cobalt-bright);
-  flex: 0 0 auto;
-}
-
-.section-node__title {
-  cursor: default;
-  flex: 1;
-}
-
-.section-node__delete {
-  margin-left: auto;
-  opacity: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: inherit;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-  transition: opacity 100ms;
-}
-
-.section-node:hover .section-node__delete {
-  opacity: 0.6;
-}
-
-.section-node--selected {
-  outline: 1px solid var(--dispatch-cobalt-30);
-  border-radius: 4px;
-}
-
 /* ─── Slash Command Palette ─── */
 
 .tippy-box[data-theme~='slash-command'] {
@@ -497,103 +436,3 @@ button {
   padding: 0;
 }
 
-.slash-palette {
-  overflow: hidden;
-  min-width: 228px;
-  max-width: 280px;
-  padding: 6px;
-  color: var(--dispatch-text-primary);
-  background: var(--dispatch-bg-elevated);
-  border: 1px solid var(--dispatch-border-strong);
-  border-radius: var(--dispatch-r-md);
-  box-shadow: var(--dispatch-shadow-pop);
-  font-family: var(--dispatch-font-sans);
-}
-
-.slash-palette__group {
-  padding-bottom: 6px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--dispatch-border-soft);
-}
-
-.slash-palette__group:last-child {
-  padding-bottom: 0;
-  margin-bottom: 0;
-  border-bottom: 0;
-}
-
-.slash-palette__group-label {
-  padding: 5px 8px 6px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--dispatch-text-quaternary);
-}
-
-.slash-palette__item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 8px;
-  border: none;
-  border-radius: calc(var(--dispatch-r-sm) - 1px);
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  color: var(--dispatch-text-primary);
-  transition:
-    background 80ms ease,
-    color 80ms ease;
-}
-
-.slash-palette__item:hover,
-.slash-palette__item--active {
-  background: var(--dispatch-bg-hover);
-  color: var(--dispatch-text-primary);
-}
-
-.slash-palette__item-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 17px;
-  height: 17px;
-  color: var(--dispatch-text-tertiary);
-  flex-shrink: 0;
-}
-
-.slash-palette__item--active .slash-palette__item-icon,
-.slash-palette__item:hover .slash-palette__item-icon {
-  color: var(--dispatch-text-secondary);
-}
-
-.slash-palette__item-label {
-  min-width: 0;
-  font-weight: 500;
-  font-size: 13px;
-  line-height: 1.25;
-  color: inherit;
-  flex: 1;
-}
-
-.slash-palette__item-shortcut {
-  margin-left: 10px;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--dispatch-text-tertiary);
-  font-feature-settings: 'tnum';
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.slash-palette__empty {
-  padding: 8px;
-  font-size: 13px;
-  color: var(--dispatch-text-tertiary);
-  text-align: center;
-}
