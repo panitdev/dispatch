@@ -47,6 +47,7 @@ export const CommandPalette = forwardRef<CommandPaletteHandle, CommandPalettePro
               .filter((i) => i.group === group)
               .map((item) => {
                 const idx = items.indexOf(item)
+                const Icon = item.icon
                 return (
                   <button
                     key={item.id}
@@ -55,8 +56,13 @@ export const CommandPalette = forwardRef<CommandPaletteHandle, CommandPalettePro
                     onMouseEnter={() => setSelectedIndex(idx)}
                     onClick={() => command(item)}
                   >
+                    <span className="slash-palette__item-icon">
+                      <Icon size={14} strokeWidth={1.8} />
+                    </span>
                     <span className="slash-palette__item-label">{item.label}</span>
-                    <span className="slash-palette__item-desc">{item.description}</span>
+                    {item.shortcut && (
+                      <span className="slash-palette__item-shortcut">{item.shortcut}</span>
+                    )}
                   </button>
                 )
               })}

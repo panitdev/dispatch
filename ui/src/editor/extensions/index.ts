@@ -8,9 +8,7 @@ import { SectionNode } from './SectionNode'
 import { SlashCommand } from './SlashCommand'
 
 export const extensions = [
-  StarterKit.configure({
-    heading: false,
-  }),
+  StarterKit,
   Markdown.configure({
     html: false,
     transformPastedText: true,

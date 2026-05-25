@@ -22,8 +22,7 @@ export const SlashCommand = Extension.create({
         startOfLine: false,
 
         command: ({ editor, range, props }) => {
-          editor.chain().focus().deleteRange(range).run()
-          props.command(editor)
+          props.command({ editor, range })
         },
 
         items: ({ query }: { query: string }) =>
