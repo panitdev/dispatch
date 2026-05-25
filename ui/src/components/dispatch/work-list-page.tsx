@@ -4,20 +4,23 @@ import { IssueSection } from './issue-section'
 import { Kbd } from './primitives'
 import { PageHead } from './page-head'
 
+import type { ReactNode } from 'react'
 import type { Section } from '../../data/dispatch'
 
 export function WorkListPage({
   title,
   subtitle,
   sections,
+  action,
 }: {
   title: string
   subtitle: string
   sections: Section[]
+  action?: ReactNode
 }) {
   return (
     <>
-      <PageHead title={title} subtitle={subtitle} />
+      <PageHead title={title} subtitle={subtitle} action={action} />
 
       {sections.map((section) => (
         <IssueSection key={section.title} section={section} />

@@ -1,8 +1,12 @@
-import { FilePenLine, Play, TimerReset } from 'lucide-react'
+import { FilePenLine, Play, Plus, TimerReset } from 'lucide-react'
+import { useState } from 'react'
 
-import { WorkListPage } from './work-list-page'
-import { PageHead } from './page-head'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+
+import { IssueCreateDialog } from './IssueCreateDialog'
+import { PageHead } from './page-head'
+import { WorkListPage } from './work-list-page'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 
@@ -10,6 +14,8 @@ import type { ApiNowIssue, ApiNowResponse } from '@/lib/api'
 import type { Issue, Section } from '../../data/dispatch'
 
 export function NowPage({ data }: { data: ApiNowResponse }) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+
   const sections: Section[] = [
     {
       title: 'Continue',
@@ -31,11 +37,23 @@ export function NowPage({ data }: { data: ApiNowResponse }) {
   ].filter((section) => section.issues.length > 0)
 
   return (
-    <WorkListPage
-      title={pageCopy.Now.title}
-      subtitle={pageCopy.Now.subtitle}
-      sections={sections}
-    />
+    <>
+      <WorkListPage
+        title={pageCopy.Now.title}
+        subtitle={pageCopy.Now.subtitle}
+        sections={sections}
+        action={
+          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
+            <Plus size={14} />
+            New issue
+          </Button>
+        }
+      />
+      <IssueCreateDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+      />
+    </>
   )
 }
 

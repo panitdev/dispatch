@@ -52,6 +52,15 @@ export type CreateProjectInput = {
   parent_id?: string
 }
 
+export type CreateIssueInput = {
+  project_id: string
+  title: string
+  status?: string
+  blocks?: unknown[]
+}
+
+export type CreateIssueResponse = ApiIssue
+
 const clientApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(
   /\/$/,
   '',
@@ -193,5 +202,19 @@ export function createProject(input: CreateProjectInput) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(input),
+  })
+}
+
+export function createIssue(input: CreateIssueInput) {
+  return apiFetch<CreateIssueResponse>(`/api/v1/projects/${input.project_id}/issues`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title: input.title,
+      status: input.status ?? 'draft',
+      blocks: input.blocks ?? [],
+    }),
   })
 }
