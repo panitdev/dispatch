@@ -29,11 +29,13 @@ import type React from 'react'
 type CommandPaletteProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreateIssue: () => void
 }
 
 export function CommandPalette({
   open,
   onOpenChange,
+  onCreateIssue,
 }: CommandPaletteProps) {
   const navigate = useNavigate()
 
@@ -105,7 +107,7 @@ export function CommandPalette({
               icon={<Plus size={14} />}
               label="Create issue"
               shortcut={['Ctrl', 'N']}
-              onSelect={() => onOpenChange(false)}
+              onSelect={() => run(onCreateIssue)}
             />
             <PaletteItem
               icon={<Play size={14} />}
