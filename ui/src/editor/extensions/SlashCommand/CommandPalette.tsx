@@ -30,8 +30,7 @@ export const CommandPalette = forwardRef<CommandPaletteHandle, CommandPalettePro
           return true
         }
         if (event.key === 'Enter') {
-          const item = items[selectedIndex]
-          if (item) command(item)
+          if (items.length > 0) command(items[selectedIndex])
           return true
         }
         return false
@@ -39,7 +38,7 @@ export const CommandPalette = forwardRef<CommandPaletteHandle, CommandPalettePro
     }))
 
     return (
-      <div className="slash-palette">
+      <div className="dispatch-theme slash-palette">
         {groups.map((group) => (
           <div key={group} className="slash-palette__group">
             <div className="slash-palette__group-label">{group}</div>
