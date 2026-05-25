@@ -24,7 +24,7 @@ export function IssueEditor({ initialBlocks, onChange }: IssueEditorProps) {
     },
     editorProps: {
       attributes: {
-        class: 'issue-editor',
+        class: 'issue-editor outline-none text-sm leading-[1.65] text-[var(--dispatch-text-primary)] caret-[var(--dispatch-cobalt-bright)]',
         spellcheck: 'true',
       },
     },
@@ -32,7 +32,7 @@ export function IssueEditor({ initialBlocks, onChange }: IssueEditorProps) {
   })
 
   return (
-    <div className="issue-editor-wrap">
+    <div className="min-h-40">
       <EditorContent editor={editor} />
     </div>
   )
