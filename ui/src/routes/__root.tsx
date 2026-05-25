@@ -1,5 +1,6 @@
 import {
   HeadContent,
+  Outlet,
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
@@ -9,6 +10,7 @@ import { ThemeProvider } from 'next-themes'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
+import { DispatchLayout } from '../components/dispatch/layout'
 import { Toaster } from '../components/ui/sonner'
 
 import appCss from '../styles.css?url'
@@ -71,8 +73,17 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
     ],
   }),
+  component: RootApp,
   shellComponent: RootDocument,
 })
+
+function RootApp() {
+  return (
+    <DispatchLayout>
+      <Outlet />
+    </DispatchLayout>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (

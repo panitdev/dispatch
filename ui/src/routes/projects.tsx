@@ -1,7 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-import { DispatchLayout } from '../components/dispatch/layout'
 import {
   ProjectsPage,
   ProjectsPageSkeleton,
@@ -20,22 +19,18 @@ function ProjectsRoute() {
   const { dataPromise } = Route.useLoaderData()
 
   return (
-    <DispatchLayout active="Projects">
-      <Await promise={dataPromise} fallback={<ProjectsPageSkeleton />}>
-        {(data) => <ProjectsPage data={data} />}
-      </Await>
-    </DispatchLayout>
+    <Await promise={dataPromise} fallback={<ProjectsPageSkeleton />}>
+      {(data) => <ProjectsPage data={data} />}
+    </Await>
   )
 }
 
 function ProjectsRouteError({ error }: ErrorComponentProps) {
   return (
-    <DispatchLayout active="Projects">
-      <RouteErrorState
-        title={pageCopy.Projects.title}
-        subtitle={pageCopy.Projects.subtitle}
-        error={error}
-      />
-    </DispatchLayout>
+    <RouteErrorState
+      title={pageCopy.Projects.title}
+      subtitle={pageCopy.Projects.subtitle}
+      error={error}
+    />
   )
 }

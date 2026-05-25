@@ -1,3 +1,4 @@
+import { useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { CommandPalette } from './command-palette'
@@ -6,18 +7,19 @@ import { IssueCreateDialog } from './IssueCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
 
-import type { DispatchPage } from '../../data/dispatch'
 import type React from 'react'
+import type { DispatchPage } from '../../data/dispatch'
 
 export function DispatchLayout({
-  active,
   children,
 }: {
-  active: DispatchPage
   children: React.ReactNode
 }) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const active = useRouterState({
+    select: (state) => getActivePage(state.location.pathname),
+  })
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -57,4 +59,20 @@ export function DispatchLayout({
       <DetailRail />
     </div>
   )
+}
+
+function getActivePage(pathname: string): DispatchPage {
+  if (pathname === '/drafts') {
+    return 'Drafts'
+  }
+
+  if (pathname === '/settings') {
+    return 'Settings'
+  }
+
+  if (pathname === '/projects' || pathname.startsWith('/projects/')) {
+    return 'Projects'
+  }
+
+  return 'Now'
 }
