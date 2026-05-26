@@ -1,6 +1,7 @@
 import { useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
+import { AuthGuardDialog } from './AuthGuardDialog'
 import { CommandPalette } from './command-palette'
 import { DetailRail } from './detail-rail'
 import {
@@ -63,6 +64,7 @@ function DispatchLayoutContent({
     <div
       className={`dispatch-theme grid h-screen w-screen grid-cols-1 overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)] md:grid-cols-[232px_minmax(0,1fr)] ${showDetailRail ? 'lg:grid-cols-[232px_minmax(0,1fr)_380px]' : ''}`}
     >
+      <AuthGuardDialog />
       <Sidebar active={active} />
       <section className="relative flex h-screen min-w-0 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
         <TopBar onOpenCommand={() => setCommandOpen(true)} />
