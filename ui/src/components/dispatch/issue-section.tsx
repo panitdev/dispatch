@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +17,7 @@ import {
 import { IssueContextMenuItems, IssueDropdownMenuItems } from './issue-context-menu'
 import { useIssueSelection } from './issue-selection-context'
 import { ProjectChip, StatusPill } from './primitives'
+import { getDisplayErrorMessage, updateIssue } from '@/lib/api'
 
 import type { Issue, Section } from '../../data/dispatch'
 
@@ -62,6 +64,7 @@ function IssueRow({
   onSelect?: () => void
 }) {
   const [currentStatus, setCurrentStatus] = useState(issue.status.toLowerCase())
+  const [currentPriority, setCurrentPriority] = useState(0)
   const [currentLabels, setCurrentLabels] = useState<string[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [contentKey, setContentKey] = useState(0)
@@ -71,11 +74,52 @@ function IssueRow({
     setMenuOpen(open)
   }
 
+  async function handleStatusChange(newStatus: string) {
+    const prev = currentStatus
+    setCurrentStatus(newStatus)
+    if (issue.id) {
+      try {
+        await updateIssue(issue.id, { status: newStatus })
+      } catch (e) {
+        setCurrentStatus(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update status'))
+      }
+    }
+  }
+
+  async function handlePriorityChange(newPriority: number) {
+    const prev = currentPriority
+    setCurrentPriority(newPriority)
+    if (issue.id) {
+      try {
+        await updateIssue(issue.id, { priority: newPriority })
+      } catch (e) {
+        setCurrentPriority(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update priority'))
+      }
+    }
+  }
+
+  async function handleLabelsChange(newLabels: string[]) {
+    const prev = currentLabels
+    setCurrentLabels(newLabels)
+    if (issue.id) {
+      try {
+        await updateIssue(issue.id, { labels: newLabels })
+      } catch (e) {
+        setCurrentLabels(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update labels'))
+      }
+    }
+  }
+
   const menuProps = {
     status: currentStatus,
+    priority: currentPriority,
     labels: currentLabels,
-    onStatusChange: setCurrentStatus,
-    onLabelsChange: setCurrentLabels,
+    onStatusChange: handleStatusChange,
+    onPriorityChange: handlePriorityChange,
+    onLabelsChange: handleLabelsChange,
     onRename: () => {},
     onDelete: () => {},
   }
@@ -114,7 +158,7 @@ function IssueRow({
             <ProjectChip issue={issue} />
           </span>
           <span className="hidden md:inline-flex">
-            <StatusPill status={issue.status} />
+            <StatusPill status={currentStatus} />
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

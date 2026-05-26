@@ -166,6 +166,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     )
   }
 
+  if (response.status === 204) {
+    return undefined as unknown as T
+  }
+
   return response.json() as Promise<T>
 }
 
@@ -225,6 +229,27 @@ export function createProject(input: CreateProjectInput) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(input),
+  })
+}
+
+export type UpdateIssueInput = {
+  title?: string
+  status?: string
+  priority?: number
+  labels?: string[]
+}
+
+export function updateIssue(issueId: string, input: UpdateIssueInput) {
+  return apiFetch<ApiIssue>(`/api/v1/issues/${issueId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteIssue(issueId: string) {
+  return apiFetch<void>(`/api/v1/issues/${issueId}`, {
+    method: 'DELETE',
   })
 }
 
