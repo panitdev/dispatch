@@ -3,12 +3,18 @@ import { getRequestHeader } from '@tanstack/react-start/server'
 
 import {
   getNow,
+  getIssue,
   getProject,
   listProjectIssues,
   listProjects,
 } from './api'
 
 import type { ApiIssue, ApiNowIssue, ApiProject } from './api'
+
+export type IssuePageData = {
+  issue: ApiIssue
+  project: ApiProject | null
+}
 
 export type ProjectsPageData = {
   projects: ApiProject[]
@@ -19,6 +25,26 @@ export type ProjectPageData = {
   project: ApiProject
   issues: ApiIssue[]
 }
+
+export const getIssuePageData = createServerFn({ method: 'GET', strict: false })
+  .inputValidator((d: unknown) => d as { issueId: string })
+  .handler(async ({ data }) => {
+    const { issueId } = data
+    const done = startTiming('getIssuePageData')
+    const init = await withServerInit()
+    try {
+      const issue = await getIssue(issueId, init)
+      let project: ApiProject | null = null
+      try {
+        project = await getProject(issue.project_id, init)
+      } catch {
+        project = null
+      }
+      return { issue, project } satisfies IssuePageData
+    } finally {
+      done()
+    }
+  })
 
 export const getNowPageData = createServerFn({ method: 'GET' }).handler(
   async () => {

@@ -7,6 +7,7 @@ export type DispatchPage =
   | 'Projects'
   | 'Drafts'
   | 'Settings'
+  | 'Issue'
 
 export type Issue = {
   id?: string

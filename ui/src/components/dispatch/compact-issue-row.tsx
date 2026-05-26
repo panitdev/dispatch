@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MoreHorizontal, User } from 'lucide-react'
 import { toast } from 'sonner'
+import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -122,6 +123,7 @@ export function CompactIssueRow({
   selected,
   onSelect,
 }: CompactIssueRowData) {
+  const navigate = useNavigate()
   const [currentStatus, setCurrentStatus] = useState(status.toLowerCase())
   const [currentPriority, setCurrentPriority] = useState(priority ?? 0)
   const [currentLabels, setCurrentLabels] = useState<string[]>(labels)
@@ -181,6 +183,9 @@ export function CompactIssueRow({
     onLabelsChange: handleLabelsChange,
     onRename: () => {},
     onDelete: () => {},
+    onOpen: id
+      ? () => navigate({ to: '/issues/$issueId', params: { issueId: id } })
+      : undefined,
   }
 
   return (
