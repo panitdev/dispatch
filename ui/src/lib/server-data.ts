@@ -8,7 +8,7 @@ import {
   listProjects,
 } from './api'
 
-import type { ApiIssue, ApiProject } from './api'
+import type { ApiIssue, ApiNowIssue, ApiProject } from './api'
 
 export type ProjectsPageData = {
   projects: ApiProject[]
@@ -28,6 +28,18 @@ export const getNowPageData = createServerFn({ method: 'GET' }).handler(
       const data = await getNow(await withServerInit())
       doneFetch()
       return data
+    } finally {
+      done()
+    }
+  },
+)
+
+export const getDraftsPageData = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<ApiNowIssue[]> => {
+    const done = startTiming('getDraftsPageData')
+    try {
+      const data = await getNow(await withServerInit())
+      return data.drafts
     } finally {
       done()
     }
