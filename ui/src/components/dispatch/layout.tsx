@@ -42,7 +42,8 @@ function DispatchLayoutContent({
   const active = useRouterState({
     select: (state) => getActivePage(state.location.pathname),
   })
-  const showDetailRail = active !== 'Settings' && selectedIssueId !== null
+  const showDetailRail =
+    active !== 'Settings' && active !== 'Issue' && selectedIssueId !== null
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -74,7 +75,7 @@ function DispatchLayoutContent({
           onCreateIssue={() => setCreateOpen(true)}
           onCreateProject={() => setCreateProjectOpen(true)}
         />
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-[18px] pt-[22px] pb-20 md:px-10 md:pt-7">
+        <main className={`min-w-0 flex-1 overflow-x-hidden ${active === 'Issue' ? 'overflow-hidden' : 'overflow-y-auto px-[18px] pt-[22px] pb-20 md:px-10 md:pt-7'}`}>
           {children}
         </main>
         <CommandPalette
@@ -114,6 +115,10 @@ function getActivePage(pathname: string): DispatchPage {
 
   if (pathname === '/projects' || pathname.startsWith('/projects/')) {
     return 'Projects'
+  }
+
+  if (pathname.startsWith('/issues/')) {
+    return 'Issue'
   }
 
   return 'Now'

@@ -1,4 +1,4 @@
-import { BarChart2, Pencil, Tag, Trash2 } from 'lucide-react'
+import { BarChart2, ExternalLink, Pencil, Tag, Trash2 } from 'lucide-react'
 
 import {
   ContextMenuCheckboxItem,
@@ -57,6 +57,7 @@ export type IssueMenuProps = {
   onLabelsChange: (labels: string[]) => void
   onRename: () => void
   onDelete: () => void
+  onOpen?: () => void
 }
 
 export function IssueContextMenuItems({
@@ -68,6 +69,7 @@ export function IssueContextMenuItems({
   onLabelsChange,
   onRename,
   onDelete,
+  onOpen,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
 
@@ -81,6 +83,15 @@ export function IssueContextMenuItems({
 
   return (
     <>
+      {onOpen && (
+        <>
+          <ContextMenuItem onSelect={onOpen} className={ITEM_CLS}>
+            <ExternalLink size={14} className="shrink-0" />
+            Open
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+        </>
+      )}
       <ContextMenuSub>
         <ContextMenuSubTrigger className={SUB_TRIGGER_CLS}>
           <StatusCircle status={normalized} className="size-[14px] shrink-0" />
@@ -168,6 +179,7 @@ export function IssueDropdownMenuItems({
   onLabelsChange,
   onRename,
   onDelete,
+  onOpen,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
 
@@ -181,6 +193,15 @@ export function IssueDropdownMenuItems({
 
   return (
     <>
+      {onOpen && (
+        <>
+          <DropdownMenuItem onSelect={onOpen} className={ITEM_CLS}>
+            <ExternalLink size={14} className="shrink-0" />
+            Open
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </>
+      )}
       <DropdownMenuSub>
         <DropdownMenuSubTrigger className={SUB_TRIGGER_CLS}>
           <StatusCircle status={normalized} className="size-[14px] shrink-0" />
