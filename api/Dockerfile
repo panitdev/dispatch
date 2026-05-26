@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM rust:1.87-bookworm AS chef
+FROM rust:1-trixie AS chef
 WORKDIR /app
 
 RUN apt-get update \
@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/git \
     cargo build --release --locked -p api \
     && cp target/release/api /usr/local/bin/dispatch-api
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 WORKDIR /app
 
 ENV RUST_LOG=info
