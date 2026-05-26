@@ -17,7 +17,7 @@ import { ProjectGlyph } from './primitives'
 import type { DispatchPage } from '../../data/dispatch'
 import type { ApiProject } from '@/lib/api'
 
-export function Sidebar({ active }: { active: DispatchPage }) {
+export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?: () => void }) {
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [projectError, setProjectError] = useState<string | null>(null)
@@ -61,7 +61,7 @@ export function Sidebar({ active }: { active: DispatchPage }) {
   }, [])
 
   return (
-    <aside className="hidden min-h-0 w-[232px] shrink-0 flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3 md:flex">
+    <aside className="flex min-h-0 w-[232px] flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3">
       <div className="mb-2.5 flex items-center gap-2.5 rounded-[var(--dispatch-r-lg)] bg-[linear-gradient(90deg,var(--dispatch-brand-grad-start)_0%,var(--dispatch-brand-grad-mid)_34%,var(--dispatch-brand-grad-end)_100%)] px-2.5 py-2.5">
         <SidebarLogo />
         <div className="text-[17px] font-semibold tracking-[-0.015em]">
@@ -71,6 +71,7 @@ export function Sidebar({ active }: { active: DispatchPage }) {
           variant="ghost"
           size="icon-xs"
           className="ml-auto"
+          onClick={onToggle}
         >
           <PanelLeft size={16} />
         </Button>
@@ -127,6 +128,7 @@ export function Sidebar({ active }: { active: DispatchPage }) {
         <Button
           variant="ghost"
           size="icon-xs"
+          onClick={onToggle}
         >
           <PanelLeft size={14} />
         </Button>

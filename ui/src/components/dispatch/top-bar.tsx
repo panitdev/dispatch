@@ -1,4 +1,4 @@
-import { ChevronDown, Moon, Pencil, Search, Sun } from 'lucide-react'
+import { ChevronDown, Moon, PanelLeft, Pencil, Search, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
@@ -20,10 +20,14 @@ export function TopBar({
   onOpenCommand,
   onCreateIssue,
   onCreateProject,
+  sidebarOpen = true,
+  onToggleSidebar,
 }: {
   onOpenCommand: () => void
   onCreateIssue?: () => void
   onCreateProject?: () => void
+  sidebarOpen?: boolean
+  onToggleSidebar?: () => void
 }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -36,6 +40,17 @@ export function TopBar({
 
   return (
     <header className="flex items-center gap-3 border-b border-[var(--dispatch-border-soft)] px-3 py-3 md:px-6 md:py-3.5">
+      {!sidebarOpen && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="hidden shrink-0 md:flex"
+          onClick={onToggleSidebar}
+          aria-label="Show sidebar"
+        >
+          <PanelLeft size={16} />
+        </Button>
+      )}
       <button
         type="button"
         onClick={onOpenCommand}
