@@ -20,16 +20,40 @@ import {
 import { StatusCircle } from './primitives'
 
 const STATUSES = ['Doing', 'Next', 'Draft', 'Done', 'Cancelled']
-const PRIORITIES = ['No priority', 'Urgent', 'High', 'Medium', 'Low']
-const PLACEHOLDER_LABELS = ['Feature', 'Bug', 'Refactor']
+
+const PRIORITIES: { label: string; value: number }[] = [
+  { label: 'No priority', value: 0 },
+  { label: 'Urgent', value: 1 },
+  { label: 'High', value: 2 },
+  { label: 'Medium', value: 3 },
+  { label: 'Low', value: 4 },
+]
+
+const LABELS = ['bug', 'feature', 'improvement', 'docs']
 
 const ITEM_CLS = 'py-1.5 text-[13px]'
 const SUB_TRIGGER_CLS = 'py-1.5 text-[13px]'
 
+function Checkmark() {
+  return (
+    <span className="ml-auto text-[var(--dispatch-cobalt-bright)]">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <polyline points="2,6 5,9.5 10,2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  )
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 export type IssueMenuProps = {
   status: string
+  priority: number
   labels: string[]
   onStatusChange: (status: string) => void
+  onPriorityChange: (priority: number) => void
   onLabelsChange: (labels: string[]) => void
   onRename: () => void
   onDelete: () => void
@@ -37,8 +61,10 @@ export type IssueMenuProps = {
 
 export function IssueContextMenuItems({
   status,
+  priority,
   labels,
   onStatusChange,
+  onPriorityChange,
   onLabelsChange,
   onRename,
   onDelete,
@@ -71,13 +97,7 @@ export function IssueContextMenuItems({
               >
                 <StatusCircle status={value} className="size-[14px] shrink-0" />
                 {s}
-                {value === normalized && (
-                  <span className="ml-auto text-[var(--dispatch-cobalt-bright)]">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                      <polyline points="2,6 5,9.5 10,2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                )}
+                {value === normalized && <Checkmark />}
               </ContextMenuItem>
             )
           })}
@@ -91,7 +111,14 @@ export function IssueContextMenuItems({
         </ContextMenuSubTrigger>
         <ContextMenuSubContent className="min-w-[140px]">
           {PRIORITIES.map((p) => (
-            <ContextMenuItem key={p} className={ITEM_CLS}>{p}</ContextMenuItem>
+            <ContextMenuItem
+              key={p.label}
+              onSelect={() => onPriorityChange(p.value)}
+              className={`${ITEM_CLS} gap-2`}
+            >
+              {p.label}
+              {p.value === priority && <Checkmark />}
+            </ContextMenuItem>
           ))}
         </ContextMenuSubContent>
       </ContextMenuSub>
@@ -102,14 +129,14 @@ export function IssueContextMenuItems({
           Labels
         </ContextMenuSubTrigger>
         <ContextMenuSubContent className="min-w-[140px]">
-          {PLACEHOLDER_LABELS.map((label) => (
+          {LABELS.map((label) => (
             <ContextMenuCheckboxItem
               key={label}
               checked={labels.includes(label)}
               onCheckedChange={() => toggleLabel(label)}
               className={ITEM_CLS}
             >
-              {label}
+              {capitalize(label)}
             </ContextMenuCheckboxItem>
           ))}
         </ContextMenuSubContent>
@@ -134,8 +161,10 @@ export function IssueContextMenuItems({
 
 export function IssueDropdownMenuItems({
   status,
+  priority,
   labels,
   onStatusChange,
+  onPriorityChange,
   onLabelsChange,
   onRename,
   onDelete,
@@ -168,13 +197,7 @@ export function IssueDropdownMenuItems({
               >
                 <StatusCircle status={value} className="size-[14px] shrink-0" />
                 {s}
-                {value === normalized && (
-                  <span className="ml-auto text-[var(--dispatch-cobalt-bright)]">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                      <polyline points="2,6 5,9.5 10,2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                )}
+                {value === normalized && <Checkmark />}
               </DropdownMenuItem>
             )
           })}
@@ -188,7 +211,14 @@ export function IssueDropdownMenuItems({
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="min-w-[140px]">
           {PRIORITIES.map((p) => (
-            <DropdownMenuItem key={p} className={ITEM_CLS}>{p}</DropdownMenuItem>
+            <DropdownMenuItem
+              key={p.label}
+              onSelect={() => onPriorityChange(p.value)}
+              className={`${ITEM_CLS} gap-2`}
+            >
+              {p.label}
+              {p.value === priority && <Checkmark />}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -199,14 +229,14 @@ export function IssueDropdownMenuItems({
           Labels
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="min-w-[140px]">
-          {PLACEHOLDER_LABELS.map((label) => (
+          {LABELS.map((label) => (
             <DropdownMenuCheckboxItem
               key={label}
               checked={labels.includes(label)}
               onCheckedChange={() => toggleLabel(label)}
               className={ITEM_CLS}
             >
-              {label}
+              {capitalize(label)}
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuSubContent>

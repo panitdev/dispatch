@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MoreHorizontal, User } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +16,7 @@ import {
 
 import { IssueContextMenuItems, IssueDropdownMenuItems } from './issue-context-menu'
 import { StatusCircle } from './primitives'
+import { getDisplayErrorMessage, updateIssue } from '@/lib/api'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
@@ -98,6 +100,7 @@ function PriorityIcon({ priority }: { priority?: number }) {
 // ─── Compact issue row ────────────────────────────────────────────────────────
 
 export type CompactIssueRowData = {
+  id?: string
   issueKey: string
   status: string
   priority?: number
@@ -109,6 +112,7 @@ export type CompactIssueRowData = {
 }
 
 export function CompactIssueRow({
+  id,
   issueKey,
   status,
   priority,
@@ -119,6 +123,7 @@ export function CompactIssueRow({
   onSelect,
 }: CompactIssueRowData) {
   const [currentStatus, setCurrentStatus] = useState(status.toLowerCase())
+  const [currentPriority, setCurrentPriority] = useState(priority ?? 0)
   const [currentLabels, setCurrentLabels] = useState<string[]>(labels)
   const [menuOpen, setMenuOpen] = useState(false)
   const [contentKey, setContentKey] = useState(0)
@@ -128,11 +133,52 @@ export function CompactIssueRow({
     setMenuOpen(open)
   }
 
+  async function handleStatusChange(newStatus: string) {
+    const prev = currentStatus
+    setCurrentStatus(newStatus)
+    if (id) {
+      try {
+        await updateIssue(id, { status: newStatus })
+      } catch (e) {
+        setCurrentStatus(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update status'))
+      }
+    }
+  }
+
+  async function handlePriorityChange(newPriority: number) {
+    const prev = currentPriority
+    setCurrentPriority(newPriority)
+    if (id) {
+      try {
+        await updateIssue(id, { priority: newPriority })
+      } catch (e) {
+        setCurrentPriority(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update priority'))
+      }
+    }
+  }
+
+  async function handleLabelsChange(newLabels: string[]) {
+    const prev = currentLabels
+    setCurrentLabels(newLabels)
+    if (id) {
+      try {
+        await updateIssue(id, { labels: newLabels })
+      } catch (e) {
+        setCurrentLabels(prev)
+        toast.error(getDisplayErrorMessage(e, 'Failed to update labels'))
+      }
+    }
+  }
+
   const menuProps = {
     status: currentStatus,
+    priority: currentPriority,
     labels: currentLabels,
-    onStatusChange: setCurrentStatus,
-    onLabelsChange: setCurrentLabels,
+    onStatusChange: handleStatusChange,
+    onPriorityChange: handlePriorityChange,
+    onLabelsChange: handleLabelsChange,
     onRename: () => {},
     onDelete: () => {},
   }
@@ -159,7 +205,7 @@ export function CompactIssueRow({
           className={`group flex cursor-pointer items-center gap-2 px-6 py-[7px] transition-colors hover:bg-[var(--dispatch-bg-hover)] ${selected ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)]' : ''}`}
         >
           {/* Priority */}
-          <PriorityIcon priority={priority} />
+          <PriorityIcon priority={currentPriority} />
 
           {/* Issue key */}
           <span className="w-[72px] shrink-0 truncate font-mono text-[11px] tracking-[0.02em] text-[var(--dispatch-text-quaternary)]">

@@ -214,6 +214,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
                 className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
               >
                 <CompactIssueRow
+                  id={issue.id}
                   issueKey={issue.key}
                   status={issue.status}
                   priority={issue.priority}
