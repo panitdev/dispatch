@@ -1,4 +1,5 @@
 import { useRouterState } from '@tanstack/react-router'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
 import { AuthGuardDialog } from './AuthGuardDialog'
@@ -12,6 +13,7 @@ import { IssueCreateDialog } from './IssueCreateDialog'
 import { ProjectCreateDialog } from './ProjectCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
+import { PANIT_DEFAULT_EASE } from '@/lib/motion'
 
 import type React from 'react'
 import type { DispatchPage } from '../../data/dispatch'
@@ -63,12 +65,10 @@ function DispatchLayoutContent({
   }, [])
 
   return (
-    <div
-      className={`dispatch-theme grid h-screen w-screen grid-cols-1 overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)] md:grid-cols-[232px_minmax(0,1fr)] ${showDetailRail ? 'lg:grid-cols-[232px_minmax(0,1fr)_380px]' : ''}`}
-    >
+    <div className="dispatch-theme flex h-screen w-screen overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)]">
       <AuthGuardDialog />
       <Sidebar active={active} />
-      <section className="relative flex h-screen min-w-0 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
+      <section className="relative flex h-screen min-w-0 flex-1 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
         <TopBar
           onOpenCommand={() => setCommandOpen(true)}
           onCreateIssue={() => setCreateOpen(true)}
@@ -85,7 +85,20 @@ function DispatchLayoutContent({
         <IssueCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
         <ProjectCreateDialog open={createProjectOpen} onOpenChange={setCreateProjectOpen} />
       </section>
-      {showDetailRail ? <DetailRail /> : null}
+      <AnimatePresence>
+        {showDetailRail && (
+          <motion.div
+            key="detail-rail"
+            className="hidden shrink-0 overflow-hidden lg:block"
+            initial={{ width: 0 }}
+            animate={{ width: 380 }}
+            exit={{ width: 0 }}
+            transition={{ duration: 0.65, ease: PANIT_DEFAULT_EASE }}
+          >
+            <DetailRail />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

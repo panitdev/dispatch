@@ -92,7 +92,7 @@ export function DetailRail() {
   }, [selectedIssueId])
 
   return (
-    <aside className="hidden min-h-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] lg:flex">
+    <aside className="flex min-h-0 w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]">
       <div className="flex items-center border-b border-[var(--dispatch-border-soft)] px-[18px] py-3.5">
         <IconButton label="Open issue">
           <ExternalLink size={15} />
