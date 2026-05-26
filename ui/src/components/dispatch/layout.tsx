@@ -89,7 +89,7 @@ function DispatchLayoutContent({
         {showDetailRail && (
           <motion.div
             key="detail-rail"
-            className="hidden shrink-0 overflow-hidden lg:block"
+            className="hidden h-full shrink-0 overflow-hidden lg:block"
             initial={{ width: 0 }}
             animate={{ width: 380 }}
             exit={{ width: 0 }}
