@@ -3,59 +3,19 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { AnimatedField } from '@/components/ui/animated-field'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 import { PageHead } from './page-head'
+import { ProjectCreateDialog } from './ProjectCreateDialog'
 import { ProjectGlyph, StatusPill } from './primitives'
-import {
-  createProject,
-  getDisplayErrorMessage,
-} from '@/lib/api'
+import { getDisplayErrorMessage } from '@/lib/api'
 import { getProjectsPageData } from '@/lib/server-data'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
 import type { ProjectsPageData } from '@/lib/server-data'
-import type { FormEvent } from 'react'
 
-function validateProjectKey(value: string) {
-  if (!value.trim()) {
-    return 'Project key is required.'
-  }
-
-  if (!/^[A-Z0-9]+$/.test(value)) {
-    return 'Use only uppercase letters and numbers.'
-  }
-
-  return null
-}
-
-function validateProjectName(value: string) {
-  if (!value.trim()) {
-    return 'Project name is required.'
-  }
-
-  return null
-}
-
-const NO_PARENT_PROJECT = '__none__'
 
 export function ProjectsPage({ data }: { data: ProjectsPageData }) {
   const [projects, setProjects] = useState<ApiProject[]>(data.projects)
@@ -65,11 +25,6 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [keyValue, setKeyValue] = useState('')
-  const [color, setColor] = useState('#5b5bd6')
-  const [parentId, setParentId] = useState('')
 
   const projectList = flattenProjects(projects)
 
@@ -85,30 +40,6 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
       setError(getDisplayErrorMessage(loadError, 'Failed to load projects.'))
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  async function handleCreateProject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setIsCreating(true)
-
-    try {
-      await createProject({
-        name,
-        key: keyValue,
-        color,
-        parent_id: parentId || undefined,
-      })
-      setIsDialogOpen(false)
-      setName('')
-      setKeyValue('')
-      setColor('#5b5bd6')
-      setParentId('')
-      await loadProjects()
-    } catch (createError) {
-      setError(getDisplayErrorMessage(createError, 'Failed to create project.'))
-    } finally {
-      setIsCreating(false)
     }
   }
 
@@ -200,92 +131,11 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
         ))}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="dispatch-theme border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-primary)]">
-          <DialogHeader>
-            <DialogTitle>Create project</DialogTitle>
-            <DialogDescription>
-              Add a project to the dispatch workspace. Issue creation stays out
-              of scope here.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            className="space-y-4 [&_[class*='bg-card']]:bg-[var(--dispatch-bg-surface)] [&_[class*='border-border']]:border-[var(--dispatch-border)] [&_[class*='border-primary']]:border-[var(--dispatch-cobalt-30)] [&_[class*='ring-primary']]:ring-[var(--dispatch-cobalt-30)]/20 [&_input]:text-[var(--dispatch-text-primary)] [&_label]:text-[var(--dispatch-text-secondary)]"
-            onSubmit={handleCreateProject}
-          >
-            <AnimatedField
-              id="project-name"
-              label="Name"
-              value={name}
-              onChange={setName}
-              placeholder="Registry"
-              validate={validateProjectName}
-              required
-            />
-            <AnimatedField
-              id="project-key"
-              label="Key"
-              value={keyValue}
-              onChange={(value) => setKeyValue(value.toUpperCase())}
-              placeholder="REG"
-              maxLength={12}
-              validate={validateProjectKey}
-              required
-            />
-            <AnimatedField
-              id="project-color"
-              label="Color"
-              type="color"
-              value={color}
-              onChange={setColor}
-              inputClassName="min-h-11"
-            />
-            <label className="block space-y-1.5">
-              <span className="text-[12px] font-medium text-[var(--dispatch-text-secondary)]">
-                Parent project
-              </span>
-              <Select
-                value={parentId || NO_PARENT_PROJECT}
-                onValueChange={(value) => setParentId(value === NO_PARENT_PROJECT ? '' : value)}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg border-[var(--dispatch-border)] bg-[var(--dispatch-bg-surface)] px-3 text-[var(--dispatch-text-primary)] data-[placeholder]:text-[var(--dispatch-text-tertiary)] [&_svg]:text-[var(--dispatch-text-tertiary)]">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent className="dispatch-theme border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-primary)]">
-                  <SelectItem
-                    value={NO_PARENT_PROJECT}
-                    className="text-[var(--dispatch-text-primary)] focus:bg-[var(--dispatch-bg-hover)] focus:text-[var(--dispatch-text-primary)]"
-                  >
-                    None
-                  </SelectItem>
-                  {projectList.map(({ project, depth }) => (
-                    <SelectItem
-                      key={project.id}
-                      value={project.id}
-                      className="text-[var(--dispatch-text-primary)] focus:bg-[var(--dispatch-bg-hover)] focus:text-[var(--dispatch-text-primary)]"
-                    >
-                      {`${'  '.repeat(depth)}${project.key} · ${project.name}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <DialogFooter className="border-[var(--dispatch-border)] bg-[var(--dispatch-bg-surface)]">
-              <Button
-                variant="outline"
-                type="button"
-                className="border-[var(--dispatch-border)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-primary)] hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-primary)]"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" loading={isCreating} loadingText="Creating">
-                Create project
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ProjectCreateDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onCreated={loadProjects}
+      />
     </>
   )
 }

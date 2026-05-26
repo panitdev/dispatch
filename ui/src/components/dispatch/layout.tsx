@@ -9,6 +9,7 @@ import {
   useIssueSelection,
 } from './issue-selection-context'
 import { IssueCreateDialog } from './IssueCreateDialog'
+import { ProjectCreateDialog } from './ProjectCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
 
@@ -34,6 +35,7 @@ function DispatchLayoutContent({
 }) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const { selectedIssueId } = useIssueSelection()
   const active = useRouterState({
     select: (state) => getActivePage(state.location.pathname),
@@ -67,7 +69,11 @@ function DispatchLayoutContent({
       <AuthGuardDialog />
       <Sidebar active={active} />
       <section className="relative flex h-screen min-w-0 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
-        <TopBar onOpenCommand={() => setCommandOpen(true)} />
+        <TopBar
+          onOpenCommand={() => setCommandOpen(true)}
+          onCreateIssue={() => setCreateOpen(true)}
+          onCreateProject={() => setCreateProjectOpen(true)}
+        />
         <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-[18px] pt-[22px] pb-20 md:px-10 md:pt-7">
           {children}
         </main>
@@ -77,6 +83,7 @@ function DispatchLayoutContent({
           onCreateIssue={() => setCreateOpen(true)}
         />
         <IssueCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+        <ProjectCreateDialog open={createProjectOpen} onOpenChange={setCreateProjectOpen} />
       </section>
       {showDetailRail ? <DetailRail /> : null}
     </div>

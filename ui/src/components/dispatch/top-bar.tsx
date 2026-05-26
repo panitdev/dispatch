@@ -1,4 +1,4 @@
-import { ChevronDown, Moon, Plus, Search, Sun } from 'lucide-react'
+import { ChevronDown, Moon, Pencil, Search, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
@@ -7,10 +7,24 @@ import {
   ButtonGroup,
   ButtonGroupSeparator,
 } from '@/components/ui/button-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import { Kbd } from './primitives'
 
-export function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
+export function TopBar({
+  onOpenCommand,
+  onCreateIssue,
+  onCreateProject,
+}: {
+  onOpenCommand: () => void
+  onCreateIssue?: () => void
+  onCreateProject?: () => void
+}) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -39,18 +53,27 @@ export function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
         <Button
           size="sm"
           className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"
+          onClick={onCreateIssue}
         >
-          <Plus size={15} />
-          Capture
+          <Pencil size={15} />
+          Create
         </Button>
         <ButtonGroupSeparator className="bg-[var(--dispatch-cta-divider)]" />
-        <Button
-          size="icon-sm"
-          className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"
-          aria-label="Capture options"
-        >
-          <ChevronDown size={14} />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon-sm"
+              className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"
+              aria-label="Create options"
+            >
+              <ChevronDown size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onCreateIssue}>New Draft</DropdownMenuItem>
+            <DropdownMenuItem onClick={onCreateProject}>New Project</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
 
       <Button
