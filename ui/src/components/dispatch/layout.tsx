@@ -38,6 +38,7 @@ function DispatchLayoutContent({
   const [commandOpen, setCommandOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const { selectedIssueId } = useIssueSelection()
   const active = useRouterState({
     select: (state) => getActivePage(state.location.pathname),
@@ -68,12 +69,27 @@ function DispatchLayoutContent({
   return (
     <div className="dispatch-theme flex h-screen w-screen overflow-hidden bg-[var(--dispatch-bg-base)] font-sans text-sm leading-normal text-[var(--dispatch-text-primary)]">
       <AuthGuardDialog />
-      <Sidebar active={active} />
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.div
+            key="sidebar"
+            className="hidden h-full shrink-0 overflow-hidden md:block"
+            initial={{ width: 0 }}
+            animate={{ width: 232 }}
+            exit={{ width: 0 }}
+            transition={{ duration: 0.65, ease: PANIT_DEFAULT_EASE }}
+          >
+            <Sidebar active={active} onToggle={() => setSidebarOpen(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <section className="relative flex h-screen min-w-0 flex-1 flex-col overflow-hidden bg-[var(--dispatch-bg-base)]">
         <TopBar
           onOpenCommand={() => setCommandOpen(true)}
           onCreateIssue={() => setCreateOpen(true)}
           onCreateProject={() => setCreateProjectOpen(true)}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(true)}
         />
         <main className={`min-w-0 flex-1 overflow-x-hidden ${active === 'Issue' ? 'overflow-hidden' : 'overflow-y-auto px-[18px] pt-[22px] pb-20 md:px-10 md:pt-7'}`}>
           {children}
