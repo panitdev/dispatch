@@ -1,10 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star } from 'lucide-react'
+import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star, Trash2 } from 'lucide-react'
+import { useRouter } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AnimatedField } from '@/components/ui/animated-field'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { CompactIssueRow } from './compact-issue-row'
 import { useIssueSelection } from './issue-selection-context'
+
+import {
+  updateProject,
+  deleteProject,
+  getDisplayErrorMessage,
+} from '@/lib/api'
+import { toast } from 'sonner'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
 import type { ProjectPageData } from '@/lib/server-data'
@@ -12,6 +29,7 @@ import type { ProjectPageData } from '@/lib/server-data'
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type FilterTab = 'all' | 'active' | 'backlog' | 'drafts'
+type MainTab = 'issues' | 'settings'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +74,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
   const { selectedIssueId, selectIssue } = useIssueSelection()
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [mainTab, setMainTab] = useState<MainTab>('issues')
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const filterCounts: Record<FilterTab, number> = {
@@ -145,107 +164,353 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
         </div>
       </div>
 
-      {/* ── Issues / Settings tabs (scrolls away) ────────────────────────── */}
+      {/* ── Issues / Settings tabs ────────────────────────────────────────── */}
       <div className="flex items-end gap-0 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10">
-        <TabItem active>Issues</TabItem>
-        <TabItem>Settings</TabItem>
+        <TabItem active={mainTab === 'issues'} onClick={() => setMainTab('issues')}>
+          Issues
+        </TabItem>
+        <TabItem active={mainTab === 'settings'} onClick={() => setMainTab('settings')}>
+          Settings
+        </TabItem>
       </div>
 
-      {/* ── Sticky filter bar (always visible) ───────────────────────────── */}
-      <div className="sticky -top-[22px] z-10 flex items-center gap-1.5 border-b border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-base)] px-[18px] py-2.5 md:-top-7 md:px-10">
-        <FilterTabItem
-          active={activeFilter === 'all'}
-          count={filterCounts.all}
-          onClick={() => setActiveFilter('all')}
-        >
-          All issues
-        </FilterTabItem>
-        <FilterTabItem
-          active={activeFilter === 'active'}
-          count={filterCounts.active}
-          onClick={() => setActiveFilter('active')}
-        >
-          Active
-        </FilterTabItem>
-        <FilterTabItem
-          active={activeFilter === 'backlog'}
-          count={filterCounts.backlog}
-          onClick={() => setActiveFilter('backlog')}
-        >
-          Backlog
-        </FilterTabItem>
-        <FilterTabItem
-          active={activeFilter === 'drafts'}
-          count={filterCounts.drafts}
-          onClick={() => setActiveFilter('drafts')}
-        >
-          Drafts
-        </FilterTabItem>
+      {mainTab === 'settings' ? (
+        <ProjectSettingsTab project={project} />
+      ) : (
+        <>
+          {/* ── Sticky filter bar (always visible) ───────────────────────── */}
+          <div className="sticky -top-[22px] z-10 flex items-center gap-1.5 border-b border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-base)] px-[18px] py-2.5 md:-top-7 md:px-10">
+            <FilterTabItem
+              active={activeFilter === 'all'}
+              count={filterCounts.all}
+              onClick={() => setActiveFilter('all')}
+            >
+              All issues
+            </FilterTabItem>
+            <FilterTabItem
+              active={activeFilter === 'active'}
+              count={filterCounts.active}
+              onClick={() => setActiveFilter('active')}
+            >
+              Active
+            </FilterTabItem>
+            <FilterTabItem
+              active={activeFilter === 'backlog'}
+              count={filterCounts.backlog}
+              onClick={() => setActiveFilter('backlog')}
+            >
+              Backlog
+            </FilterTabItem>
+            <FilterTabItem
+              active={activeFilter === 'drafts'}
+              count={filterCounts.drafts}
+              onClick={() => setActiveFilter('drafts')}
+            >
+              Drafts
+            </FilterTabItem>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-primary)]"
-          >
-            <Filter size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-primary)]"
-          >
-            <SlidersHorizontal size={14} />
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Issue list ────────────────────────────────────────────────────── */}
-      <div>
-        {visibleIssues.length === 0 ? (
-          <div className="py-16 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
-            No issues in this filter.
-          </div>
-        ) : (
-          <div>
-            {visibleIssues.map((issue) => (
-              <div
-                key={issue.id}
-                className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
+            <div className="ml-auto flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-primary)]"
               >
-                <CompactIssueRow
-                  id={issue.id}
-                  issueKey={issue.key}
-                  status={issue.status}
-                  priority={issue.priority}
-                  title={issue.title}
-                  labels={issue.labels}
-                  date={issue.updated_at}
-                  selected={issue.id === selectedIssueId}
-                  onSelect={() => selectIssue(issue.id)}
-                />
-              </div>
-            ))}
+                <Filter size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-primary)]"
+              >
+                <SlidersHorizontal size={14} />
+              </Button>
+            </div>
           </div>
-        )}
 
-        {/* Bottom sentinel for infinite scroll */}
-        {hasMore ? (
-          <div
-            ref={sentinelRef}
-            className="flex items-center justify-center gap-2 py-6"
-          >
-            <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)]" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)] [animation-delay:150ms]" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)] [animation-delay:300ms]" />
+          {/* ── Issue list ────────────────────────────────────────────────── */}
+          <div>
+            {visibleIssues.length === 0 ? (
+              <div className="py-16 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
+                No issues in this filter.
+              </div>
+            ) : (
+              <div>
+                {visibleIssues.map((issue) => (
+                  <div
+                    key={issue.id}
+                    className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
+                  >
+                    <CompactIssueRow
+                      id={issue.id}
+                      issueKey={issue.key}
+                      status={issue.status}
+                      priority={issue.priority}
+                      title={issue.title}
+                      labels={issue.labels}
+                      date={issue.updated_at}
+                      selected={issue.id === selectedIssueId}
+                      onSelect={() => selectIssue(issue.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Bottom sentinel for infinite scroll */}
+            {hasMore ? (
+              <div
+                ref={sentinelRef}
+                className="flex items-center justify-center gap-2 py-6"
+              >
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)]" />
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)] [animation-delay:150ms]" />
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)] [animation-delay:300ms]" />
+              </div>
+            ) : filteredIssues.length > 0 ? (
+              <div className="py-6 text-center text-[12px] text-[var(--dispatch-text-quaternary)]">
+                {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
+              </div>
+            ) : null}
           </div>
-        ) : filteredIssues.length > 0 ? (
-          <div className="py-6 text-center text-[12px] text-[var(--dispatch-text-quaternary)]">
-            {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Settings tab ─────────────────────────────────────────────────────────────
+
+function validateName(value: string) {
+  if (!value.trim()) return 'Project name is required.'
+  return null
+}
+
+function ProjectSettingsTab({ project }: { project: ApiProject }) {
+  const router = useRouter()
+  const [name, setName] = useState(project.name)
+  const [color, setColor] = useState(project.color)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const isDirty = name !== project.name || color !== project.color
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!isDirty) return
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      await updateProject(project.id, { name: name.trim(), color })
+      toast.success('Project settings saved')
+      router.invalidate()
+    } catch (err) {
+      setSaveError(getDisplayErrorMessage(err, 'Failed to save settings.'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="px-[18px] md:px-10 py-8 max-w-xl">
+      {/* ── General section ─────────────────────────────────────────────── */}
+      <section>
+        <h2 className="mb-5 text-[15px] font-semibold tracking-[-0.01em] text-[var(--dispatch-text-primary)]">
+          General
+        </h2>
+
+        {saveError ? (
+          <div className="mb-4 rounded-[var(--dispatch-r-md)] border border-[var(--dispatch-amber-30)] bg-[var(--dispatch-amber-12)] px-3 py-2 text-[13px] text-[var(--dispatch-amber)]">
+            {saveError}
           </div>
         ) : null}
-      </div>
+
+        <form
+          className="space-y-4 [&_[class*='bg-card']]:bg-[var(--dispatch-bg-surface)] [&_[class*='border-border']]:border-[var(--dispatch-border)] [&_[class*='border-primary']]:border-[var(--dispatch-cobalt-30)] [&_[class*='ring-primary']]:ring-[var(--dispatch-cobalt-30)]/20 [&_input]:text-[var(--dispatch-text-primary)] [&_label]:text-[var(--dispatch-text-secondary)]"
+          onSubmit={handleSave}
+        >
+          <AnimatedField
+            id="settings-project-name"
+            label="Name"
+            value={name}
+            onChange={setName}
+            placeholder="Project name"
+            validate={validateName}
+            required
+          />
+
+          {/* Project key — read only */}
+          <div className="space-y-1.5">
+            <label className="block text-[12px] font-medium text-[var(--dispatch-text-secondary)]">
+              Key
+            </label>
+            <div className="flex h-11 items-center rounded-lg border border-[var(--dispatch-border)] bg-[var(--dispatch-bg-hover)] px-3 font-mono text-[13px] font-medium tracking-[0.04em] text-[var(--dispatch-text-tertiary)] uppercase select-all">
+              {project.key}
+            </div>
+            <p className="text-[11.5px] text-[var(--dispatch-text-quaternary)]">
+              The project key cannot be changed after creation.
+            </p>
+          </div>
+
+          <AnimatedField
+            id="settings-project-color"
+            label="Color"
+            type="color"
+            value={color}
+            onChange={setColor}
+          />
+
+          <div className="pt-1">
+            <Button
+              type="submit"
+              disabled={!isDirty}
+              loading={isSaving}
+              loadingText="Saving"
+            >
+              Save changes
+            </Button>
+          </div>
+        </form>
+      </section>
+
+      {/* ── Danger zone ─────────────────────────────────────────────────── */}
+      <section className="mt-12">
+        <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.01em] text-[var(--dispatch-text-primary)]">
+          Danger zone
+        </h2>
+        <p className="mb-5 text-[13px] text-[var(--dispatch-text-tertiary)]">
+          Irreversible actions. Proceed with caution.
+        </p>
+
+        <div className="rounded-[var(--dispatch-r-lg)] border border-red-500/20 bg-red-500/5 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[13.5px] font-medium text-[var(--dispatch-text-primary)]">
+                Delete this project
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-[var(--dispatch-text-tertiary)]">
+                Permanently delete <span className="font-medium text-[var(--dispatch-text-secondary)]">{project.name}</span> and all its issues. This cannot be undone.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 size={13} />
+              Delete project
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <ProjectDeleteDialog
+        project={project}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
     </div>
+  )
+}
+
+// ─── Delete confirmation dialog ───────────────────────────────────────────────
+
+function ProjectDeleteDialog({
+  project,
+  open,
+  onOpenChange,
+}: {
+  project: ApiProject
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const router = useRouter()
+  const [confirmName, setConfirmName] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const canDelete = confirmName.trim() === project.name
+
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setConfirmName('')
+      setError(null)
+    }
+  }, [open])
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canDelete) return
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await deleteProject(project.id)
+      toast.success(`"${project.name}" has been deleted`)
+      onOpenChange(false)
+      router.navigate({ to: '/projects' })
+    } catch (err) {
+      setError(getDisplayErrorMessage(err, 'Failed to delete project.'))
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="dispatch-theme border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-primary)]">
+        <DialogHeader>
+          <DialogTitle>Delete project</DialogTitle>
+          <DialogDescription>
+            This will permanently delete <strong className="text-[var(--dispatch-text-primary)]">{project.name}</strong> and all of its issues. This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+
+        {error ? (
+          <div className="rounded-[var(--dispatch-r-md)] border border-[var(--dispatch-amber-30)] bg-[var(--dispatch-amber-12)] px-3 py-2 text-[13px] text-[var(--dispatch-amber)]">
+            {error}
+          </div>
+        ) : null}
+
+        <form
+          className="space-y-4 [&_[class*='bg-card']]:bg-[var(--dispatch-bg-surface)] [&_[class*='border-border']]:border-[var(--dispatch-border)] [&_[class*='border-primary']]:border-[var(--dispatch-cobalt-30)] [&_[class*='ring-primary']]:ring-[var(--dispatch-cobalt-30)]/20 [&_input]:text-[var(--dispatch-text-primary)] [&_label]:text-[var(--dispatch-text-secondary)]"
+          onSubmit={handleDelete}
+        >
+          <div className="space-y-1.5">
+            <p className="text-[12.5px] text-[var(--dispatch-text-secondary)]">
+              Type <span className="font-semibold text-[var(--dispatch-text-primary)]">{project.name}</span> to confirm.
+            </p>
+            <AnimatedField
+              id="delete-confirm-name"
+              label="Project name"
+              value={confirmName}
+              onChange={setConfirmName}
+              placeholder={project.name}
+            />
+          </div>
+
+          <DialogFooter className="border-[var(--dispatch-border)] bg-[var(--dispatch-bg-surface)]">
+            <Button
+              variant="outline"
+              type="button"
+              className="border-[var(--dispatch-border)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-primary)] hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-primary)]"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={!canDelete}
+              loading={isDeleting}
+              loadingText="Deleting"
+            >
+              Delete project
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -265,16 +530,26 @@ function ProjectHeaderGlyph({ project }: { project: ApiProject }) {
   )
 }
 
-function TabItem({ children, active }: { children: React.ReactNode; active?: boolean }) {
+function TabItem({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode
+  active?: boolean
+  onClick?: () => void
+}) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       className={`relative cursor-pointer px-1 pb-2.5 pt-1 text-[13.5px] font-medium transition-colors mr-5 ${active
         ? 'text-[var(--dispatch-text-primary)] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:rounded-t-full after:bg-[var(--dispatch-cobalt-bright)]'
         : 'text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-secondary)]'
         }`}
     >
       {children}
-    </div>
+    </button>
   )
 }
 
