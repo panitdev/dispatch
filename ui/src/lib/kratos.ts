@@ -1,11 +1,11 @@
-const kratosPublicUrl = (import.meta.env.VITE_KRATOS_PUBLIC_URL ?? '').replace(
-  /\/$/,
-  '',
-)
+function getKratosPublicUrl(): string {
+  return (((window as any).__ENV__?.kratosPublicUrl) ?? '').replace(/\/$/, '')
+}
 
 export type AuthStatus = 'loading' | 'authed' | 'unauthed'
 
 export async function checkWhoami(): Promise<AuthStatus> {
+  const kratosPublicUrl = getKratosPublicUrl()
   if (!kratosPublicUrl) {
     return 'authed'
   }
@@ -22,6 +22,7 @@ export async function checkWhoami(): Promise<AuthStatus> {
 }
 
 export function initiateLogin() {
+  const kratosPublicUrl = getKratosPublicUrl()
   const returnTo = encodeURIComponent(window.location.href)
   window.location.href = `${kratosPublicUrl}/self-service/login/browser?return_to=${returnTo}`
 }

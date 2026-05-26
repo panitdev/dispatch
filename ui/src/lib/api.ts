@@ -79,15 +79,10 @@ export type CreateIssueInput = {
 
 export type CreateIssueResponse = ApiIssue
 
-const clientApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(
-  /\/$/,
-  '',
-)
-const serverApiBaseUrl = (
-  import.meta.env.VITE_SERVER_API_BASE_URL ??
-  import.meta.env.VITE_API_BASE_URL ??
-  ''
-).replace(/\/$/, '')
+function getClientApiBaseUrl(): string {
+  return (((window as any).__ENV__?.apiBaseUrl) ?? '').replace(/\/$/, '')
+}
+
 const loggedServerHosts = new Set<string>()
 
 export class ApiError extends Error {
@@ -127,7 +122,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   headers.set('Accept', 'application/json')
   const startedAt = performance.now()
   const apiBaseUrl =
-    typeof window === 'undefined' ? serverApiBaseUrl : clientApiBaseUrl
+    typeof window === 'undefined'
+      ? ((init as any)?._baseUrl ?? '').replace(/\/$/, '')
+      : getClientApiBaseUrl()
   const url = `${apiBaseUrl}${path}`
 
   if (typeof window === 'undefined') {

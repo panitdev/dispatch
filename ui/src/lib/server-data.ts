@@ -25,7 +25,7 @@ export const getNowPageData = createServerFn({ method: 'GET' }).handler(
     const done = startTiming('getNowPageData')
     try {
       const doneFetch = startTiming('getNowPageData:getNow')
-      const data = await getNow(withForwardedAuthHeaders())
+      const data = await getNow(await withServerInit())
       doneFetch()
       return data
     } finally {
@@ -37,7 +37,7 @@ export const getNowPageData = createServerFn({ method: 'GET' }).handler(
 export const getProjectsPageData = createServerFn({ method: 'GET' }).handler(
   async () => {
     const done = startTiming('getProjectsPageData')
-    const init = withForwardedAuthHeaders()
+    const init = await withServerInit()
     try {
       const doneProjects = startTiming('getProjectsPageData:listProjects')
       const projectTree = await listProjects(init)
@@ -71,7 +71,7 @@ export const getProjectPageData = createServerFn({ method: 'GET', strict: false 
   .handler(async ({ data }) => {
     const { projectId } = data
     const done = startTiming('getProjectPageData')
-    const init = withForwardedAuthHeaders()
+    const init = await withServerInit()
     try {
       const [project, issues] = await Promise.all([
         getProject(projectId, init),
@@ -90,7 +90,10 @@ function flattenProjects(projects: ApiProject[]): ApiProject[] {
   ])
 }
 
-function withForwardedAuthHeaders(): RequestInit {
+async function withServerInit(): Promise<RequestInit & { _baseUrl: string }> {
+  // @ts-ignore - cloudflare:workers is a built-in module in the Workers runtime
+  const { env } = await import('cloudflare:workers')
+  const cfEnv = env as Record<string, string | undefined>
   const headers = new Headers()
 
   const cookie = getRequestHeader('cookie')
@@ -103,7 +106,10 @@ function withForwardedAuthHeaders(): RequestInit {
     headers.set('authorization', authorization)
   }
 
-  return { headers }
+  return {
+    headers,
+    _baseUrl: cfEnv.SERVER_API_BASE_URL ?? cfEnv.API_BASE_URL ?? '',
+  }
 }
 
 function startTiming(label: string) {

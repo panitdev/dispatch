@@ -4,6 +4,7 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
+import { getAppConfig } from '../lib/config'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ThemeProvider } from 'next-themes'
@@ -22,7 +23,9 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  head: () => ({
+  loader: () => getAppConfig(),
+
+  head: ({ loaderData }) => ({
     meta: [
       {
         charSet: 'utf-8',
@@ -71,6 +74,21 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         rel: 'manifest',
         href: '/manifest.json',
       },
+    ],
+    scripts: [
+      // Docker path: nginx entrypoint generates this at container start.
+      // CF Workers path: stub is loaded first; inline script below overrides it.
+      { tag: 'script', attrs: { src: '/env.js' } },
+      // CF Workers path: SSR injects real config values per request.
+      // Absent from the static pre-built HTML (loaderData is undefined at build time).
+      ...(loaderData
+        ? [
+            {
+              tag: 'script' as const,
+              children: `window.__ENV__=${JSON.stringify(loaderData).replace(/<\//g, '<\\/')};`,
+            },
+          ]
+        : []),
     ],
   }),
   component: RootApp,
