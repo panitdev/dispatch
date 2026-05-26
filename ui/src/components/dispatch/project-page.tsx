@@ -316,32 +316,52 @@ function FilterTabItem({
 export function ProjectPageSkeleton() {
   return (
     <div className="-mx-[18px] md:-mx-10 -mt-[22px] md:-mt-7">
-      <div className="flex items-start gap-4 px-[18px] md:px-10 pt-[22px] md:pt-7 pb-5">
-        <Skeleton className="h-[52px] w-[52px] rounded-[12px] bg-[var(--dispatch-bg-hover)]" />
-        <div className="space-y-2 pt-0.5">
-          <Skeleton className="h-6 w-40 bg-[var(--dispatch-bg-hover)]" />
-          <Skeleton className="h-4 w-28 bg-[var(--dispatch-bg-hover)]" />
+      {/* Header — pt-[22px] md:pt-7 pb-5 */}
+      <div className="flex items-start justify-between px-[18px] md:px-10 pt-[22px] md:pt-7 pb-5">
+        <div className="flex items-start gap-4">
+          <Skeleton className="h-[52px] w-[52px] shrink-0 rounded-[12px] bg-[var(--dispatch-bg-hover)]" />
+          <div className="pt-0.5">
+            {/* h1 renders at line-height:33px */}
+            <Skeleton className="h-[33px] w-40 bg-[var(--dispatch-bg-hover)]" />
+            {/* subtitle: mt-1.5 gap, rendered height ~19px */}
+            <Skeleton className="mt-1.5 h-[19px] w-28 bg-[var(--dispatch-bg-hover)]" />
+          </div>
         </div>
       </div>
-      <div className="border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10 pb-px">
-        <div className="flex gap-5">
+
+      {/* Issues / Settings tabs — TabItem: pt-1 + ~20px text + pb-2.5 = 34px */}
+      <div className="flex items-end gap-0 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10">
+        <div className="mr-5 pb-2.5 pt-1">
           <Skeleton className="h-5 w-14 bg-[var(--dispatch-bg-hover)]" />
+        </div>
+        <div className="pb-2.5 pt-1">
           <Skeleton className="h-5 w-16 bg-[var(--dispatch-bg-hover)]" />
         </div>
       </div>
-      <div className="flex items-center gap-2 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10 py-2.5">
+
+      {/* Filter bar — py-2.5, filter buttons render at 31px */}
+      <div className="flex items-center gap-1.5 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10 py-2.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-7 w-20 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
+          <Skeleton key={i} className="h-[31px] w-20 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
         ))}
+        <div className="ml-auto flex items-center gap-1">
+          <Skeleton className="h-6 w-6 rounded-[var(--dispatch-r-sm)] bg-[var(--dispatch-bg-hover)]" />
+          <Skeleton className="h-6 w-6 rounded-[var(--dispatch-r-sm)] bg-[var(--dispatch-bg-hover)]" />
+        </div>
       </div>
+
+      {/* Issue rows — px-6 py-[7px] gap-2; row height=46px driven by the h-8 action button */}
       <div>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 border-b border-[var(--dispatch-border-soft)] py-3">
-            <Skeleton className="h-3.5 w-3.5 rounded-[3px] bg-[var(--dispatch-bg-hover)]" />
-            <Skeleton className="h-3.5 w-16 bg-[var(--dispatch-bg-hover)]" />
+          <div key={i} className="flex items-center gap-2 border-b border-[var(--dispatch-border-soft)] px-6 py-[7px]">
+            <Skeleton className="h-2.5 w-3 shrink-0 bg-[var(--dispatch-bg-hover)]" />
+            <Skeleton className="h-3.5 w-[72px] shrink-0 bg-[var(--dispatch-bg-hover)]" />
+            <Skeleton className="h-3.5 w-3.5 shrink-0 rounded-full bg-[var(--dispatch-bg-hover)]" />
             <Skeleton className="h-3.5 flex-1 bg-[var(--dispatch-bg-hover)]" />
-            <Skeleton className="h-5 w-16 rounded-[4px] bg-[var(--dispatch-bg-hover)]" />
-            <Skeleton className="h-3.5 w-20 bg-[var(--dispatch-bg-hover)]" />
+            <Skeleton className="h-[18px] w-[18px] shrink-0 rounded-full bg-[var(--dispatch-bg-hover)]" />
+            <Skeleton className="h-3.5 w-[42px] shrink-0 bg-[var(--dispatch-bg-hover)]" />
+            {/* invisible spacer matching the opacity-0 action button (h-8=32px) */}
+            <div className="h-8 w-8 shrink-0" />
           </div>
         ))}
       </div>
