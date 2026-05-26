@@ -232,6 +232,25 @@ export function createProject(input: CreateProjectInput) {
   })
 }
 
+export type UpdateProjectInput = {
+  name?: string
+  color?: string
+}
+
+export function updateProject(projectId: string, input: UpdateProjectInput) {
+  return apiFetch<ApiProject>(`/api/v1/projects/${projectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteProject(projectId: string) {
+  return apiFetch<void>(`/api/v1/projects/${projectId}`, {
+    method: 'DELETE',
+  })
+}
+
 export type UpdateIssueInput = {
   title?: string
   status?: string
