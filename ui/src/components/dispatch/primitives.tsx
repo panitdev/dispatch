@@ -89,6 +89,73 @@ function defaultProjectColor(projectKey: string) {
   }
 }
 
+export function StatusCircle({ status, className }: { status: string; className?: string }) {
+  const s = status.toLowerCase()
+
+  if (s === 'done') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+        <circle cx="7" cy="7" r="7" fill="var(--dispatch-green)" />
+        <polyline
+          points="4,7 6,9.5 10.5,4.5"
+          stroke="white"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+    )
+  }
+
+  if (s === 'doing') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+        <circle cx="7" cy="7" r="6" fill="none" stroke="var(--dispatch-cobalt-bright)" strokeWidth="1.5" />
+        <circle cx="7" cy="7" r="3" fill="var(--dispatch-cobalt-bright)" />
+      </svg>
+    )
+  }
+
+  if (s === 'next') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+        <circle cx="7" cy="7" r="6" fill="none" stroke="var(--dispatch-amber)" strokeWidth="1.5" />
+        <circle cx="7" cy="7" r="2.5" fill="var(--dispatch-amber)" />
+      </svg>
+    )
+  }
+
+  if (s === 'draft') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+        <circle
+          cx="7" cy="7" r="6"
+          fill="none"
+          stroke="var(--dispatch-amber)"
+          strokeWidth="1.5"
+          strokeDasharray="2.5 1.5"
+        />
+      </svg>
+    )
+  }
+
+  if (s === 'cancelled') {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+        <circle cx="7" cy="7" r="6" fill="none" stroke="var(--dispatch-text-quaternary)" strokeWidth="1.5" opacity="0.5" />
+        <line x1="4" y1="10" x2="10" y2="4" stroke="var(--dispatch-text-quaternary)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" className={className} aria-hidden="true">
+      <circle cx="7" cy="7" r="6" fill="none" stroke="var(--dispatch-text-quaternary)" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
 export function LinkChip({ label }: { label: string }) {
   return (
     <Button

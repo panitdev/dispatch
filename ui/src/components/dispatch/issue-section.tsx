@@ -1,7 +1,19 @@
+import { useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
+import { IssueContextMenuItems, IssueDropdownMenuItems } from './issue-context-menu'
 import { useIssueSelection } from './issue-selection-context'
 import { ProjectChip, StatusPill } from './primitives'
 
@@ -49,45 +61,72 @@ function IssueRow({
   selected?: boolean
   onSelect?: () => void
 }) {
+  const [currentStatus, setCurrentStatus] = useState(issue.status.toLowerCase())
+  const [currentLabels, setCurrentLabels] = useState<string[]>([])
+
+  const menuProps = {
+    status: currentStatus,
+    labels: currentLabels,
+    onStatusChange: setCurrentStatus,
+    onLabelsChange: setCurrentLabels,
+    onRename: () => {},
+    onDelete: () => {},
+  }
+
   return (
-    <div
-      role={onSelect ? 'button' : undefined}
-      tabIndex={onSelect ? 0 : undefined}
-      aria-pressed={onSelect ? selected : undefined}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) {
-          return
-        }
-        event.preventDefault()
-        onSelect()
-      }}
-      className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${selected ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
-    >
-      <div className={dotClass(issue.dot)} />
-      <div className="min-w-0">
-        <div className="truncate text-sm font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)]">
-          {issue.title}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          role={onSelect ? 'button' : undefined}
+          tabIndex={onSelect ? 0 : undefined}
+          aria-pressed={onSelect ? selected : undefined}
+          onClick={onSelect}
+          onKeyDown={(event) => {
+            if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) {
+              return
+            }
+            event.preventDefault()
+            onSelect()
+          }}
+          className={`group relative grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px] items-center gap-3 border-t border-[var(--dispatch-border-soft)] px-4 py-3 transition-colors first:border-t-0 hover:bg-[var(--dispatch-bg-hover)] md:grid-cols-[16px_minmax(0,1fr)_auto_auto_28px] ${selected ? 'bg-[linear-gradient(90deg,var(--dispatch-cobalt-12)_0%,transparent_100%)] before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--dispatch-cobalt-bright)]' : ''}`}
+        >
+          <div className={dotClass(issue.dot)} />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)]">
+              {issue.title}
+            </div>
+            <div className="mt-0.5 truncate text-[12.5px] text-[var(--dispatch-text-tertiary)]">
+              {issue.sub}
+            </div>
+          </div>
+          <span className="hidden md:inline-flex">
+            <ProjectChip issue={issue} />
+          </span>
+          <span className="hidden md:inline-flex">
+            <StatusPill status={issue.status} />
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <MoreHorizontal size={16} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-auto min-w-[220px]">
+              <IssueDropdownMenuItems {...menuProps} />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="mt-0.5 truncate text-[12.5px] text-[var(--dispatch-text-tertiary)]">
-          {issue.sub}
-        </div>
-      </div>
-      <span className="hidden md:inline-flex">
-        <ProjectChip issue={issue} />
-      </span>
-      <span className="hidden md:inline-flex">
-        <StatusPill status={issue.status} />
-      </span>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        className="opacity-100 md:opacity-0 md:group-hover:opacity-100"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <MoreHorizontal size={16} />
-      </Button>
-    </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="min-w-[220px]">
+        <IssueContextMenuItems {...menuProps} />
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
