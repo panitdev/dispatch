@@ -120,6 +120,13 @@ export function CompactIssueRow({
 }: CompactIssueRowData) {
   const [currentStatus, setCurrentStatus] = useState(status.toLowerCase())
   const [currentLabels, setCurrentLabels] = useState<string[]>(labels)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [contentKey, setContentKey] = useState(0)
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) setContentKey((k) => k + 1)
+    setMenuOpen(open)
+  }
 
   const menuProps = {
     status: currentStatus,
@@ -131,7 +138,11 @@ export function CompactIssueRow({
   }
 
   return (
-    <ContextMenu>
+    <ContextMenu
+      open={menuOpen}
+      onOpenChange={handleOpenChange}
+      modal={false}
+    >
       <ContextMenuTrigger asChild>
         <div
           role={onSelect ? 'button' : undefined}
@@ -210,7 +221,7 @@ export function CompactIssueRow({
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="min-w-[220px]">
+      <ContextMenuContent key={contentKey} className="min-w-[220px]">
         <IssueContextMenuItems {...menuProps} />
       </ContextMenuContent>
     </ContextMenu>
