@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
+import { useNavigate } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -63,6 +64,7 @@ function IssueRow({
   selected?: boolean
   onSelect?: () => void
 }) {
+  const navigate = useNavigate()
   const [currentStatus, setCurrentStatus] = useState(issue.status.toLowerCase())
   const [currentPriority, setCurrentPriority] = useState(0)
   const [currentLabels, setCurrentLabels] = useState<string[]>([])
@@ -122,6 +124,9 @@ function IssueRow({
     onLabelsChange: handleLabelsChange,
     onRename: () => {},
     onDelete: () => {},
+    onOpen: issue.id
+      ? () => navigate({ to: '/issues/$issueId', params: { issueId: issue.id! } })
+      : undefined,
   }
 
   return (
