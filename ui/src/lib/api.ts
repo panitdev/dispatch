@@ -70,10 +70,21 @@ export type CreateProjectInput = {
   parent_id?: string
 }
 
+export type ApiUser = {
+  id: string
+  kratos_id: string
+  username: string
+  initials: string
+  created_at: string
+}
+
 export type CreateIssueInput = {
   project_id: string
   title: string
   status?: string
+  priority?: number
+  labels?: string[]
+  assignee_id?: string | null
   blocks?: unknown[]
 }
 
@@ -272,6 +283,10 @@ export function deleteIssue(issueId: string) {
   })
 }
 
+export function getMe(init?: RequestInit) {
+  return apiFetch<ApiUser>('/api/v1/me', init)
+}
+
 export function createIssue(input: CreateIssueInput) {
   return apiFetch<CreateIssueResponse>(`/api/v1/projects/${input.project_id}/issues`, {
     method: 'POST',
@@ -281,6 +296,9 @@ export function createIssue(input: CreateIssueInput) {
     body: JSON.stringify({
       title: input.title,
       status: input.status ?? 'draft',
+      priority: input.priority ?? 0,
+      labels: input.labels ?? [],
+      assignee_id: input.assignee_id ?? null,
       blocks: input.blocks ?? [],
     }),
   })
