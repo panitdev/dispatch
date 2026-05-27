@@ -16,7 +16,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-} from '#/components/ui/dialog'
+} from '#/components/ui/responsive-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover'
 import { Switch } from '#/components/ui/switch'
 
@@ -143,7 +143,8 @@ export function IssueCreateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="dispatch-theme flex max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-0 text-[var(--dispatch-text-primary)]"
+        drawerContentClassName="h-[100dvh] max-h-none rounded-none border-0"
+        className="dispatch-theme flex flex-1 sm:max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-0 text-[var(--dispatch-text-primary)]"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between px-4 py-3">

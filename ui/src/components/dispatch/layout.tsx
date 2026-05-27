@@ -161,8 +161,11 @@ function DispatchLayoutContent({
         shouldScaleBackground={false}
       >
         <DrawerPrimitive.Portal>
-          <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 lg:hidden" />
-          <DrawerPrimitive.Content className="dispatch-theme fixed inset-x-0 bottom-0 z-50 flex h-[88vh] flex-col overflow-hidden rounded-t-[18px] outline-none lg:hidden">
+          <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 pointer-events-none lg:hidden" />
+          <DrawerPrimitive.Content
+            className="dispatch-theme fixed inset-x-0 bottom-0 z-50 flex h-[88vh] flex-col overflow-hidden rounded-t-[18px] outline-none lg:hidden"
+            onPointerDownOutside={(e) => e.preventDefault()}
+          >
             <div className="mx-auto mt-3 mb-1 h-1.5 w-10 shrink-0 rounded-full bg-[var(--dispatch-border-soft)]" />
             <DetailRail className="w-full flex-1 border-l-0 h-auto" />
           </DrawerPrimitive.Content>
