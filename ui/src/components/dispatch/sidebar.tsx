@@ -61,7 +61,7 @@ export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?:
   }, [])
 
   return (
-    <aside className="flex min-h-0 w-[232px] flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3">
+    <aside className="flex h-full min-h-0 w-[232px] flex-col border-r border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-2.5 pt-3.5 pb-3">
       <div className="mb-2.5 flex items-center gap-2.5 rounded-[var(--dispatch-r-lg)] bg-[linear-gradient(90deg,var(--dispatch-brand-grad-start)_0%,var(--dispatch-brand-grad-mid)_34%,var(--dispatch-brand-grad-end)_100%)] px-2.5 py-2.5">
         <SidebarLogo />
         <div className="text-[17px] font-semibold tracking-[-0.015em]">
