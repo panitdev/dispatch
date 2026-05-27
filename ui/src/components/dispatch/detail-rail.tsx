@@ -25,6 +25,8 @@ import { useIssueSelection } from './issue-selection-context'
 import { ProjectGlyph, StatusPill } from './primitives'
 import { formatStatusLabel } from '../../data/dispatch'
 
+import { cn } from '@/lib/utils'
+
 import type React from 'react'
 import type { ApiIssue, ApiProject } from '@/lib/api'
 
@@ -33,7 +35,7 @@ type DetailState =
   | { status: 'ready'; issue: ApiIssue; project: ApiProject | null; error: null }
   | { status: 'error'; issue: null; project: null; error: string }
 
-export function DetailRail() {
+export function DetailRail({ className }: { className?: string }) {
   const { selectedIssueId, closeIssue } = useIssueSelection()
   const [detail, setDetail] = useState<DetailState>({
     status: 'loading',
@@ -92,7 +94,7 @@ export function DetailRail() {
   }, [selectedIssueId])
 
   return (
-    <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]">
+    <aside className={cn("flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]", className)}>
       <div className="flex items-center border-b border-[var(--dispatch-border-soft)] px-[18px] py-3.5">
         <IconButton label="Open issue">
           <ExternalLink size={15} />

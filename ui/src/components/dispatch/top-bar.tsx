@@ -1,4 +1,4 @@
-import { ChevronDown, Moon, PanelLeft, Pencil, Search, Sun } from 'lucide-react'
+import { ChevronDown, Menu, Moon, PanelLeft, Pencil, Search, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
@@ -22,12 +22,14 @@ export function TopBar({
   onCreateProject,
   sidebarOpen = true,
   onToggleSidebar,
+  onOpenMobileSidebar,
 }: {
   onOpenCommand: () => void
   onCreateIssue?: () => void
   onCreateProject?: () => void
   sidebarOpen?: boolean
   onToggleSidebar?: () => void
+  onOpenMobileSidebar?: () => void
 }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -40,6 +42,17 @@ export function TopBar({
 
   return (
     <header className="flex items-center gap-3 border-b border-[var(--dispatch-border-soft)] px-3 py-3 md:px-6 md:py-3.5">
+      {/* Mobile-only sidebar hamburger */}
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        className="shrink-0 md:hidden"
+        onClick={onOpenMobileSidebar}
+        aria-label="Open navigation"
+      >
+        <Menu size={16} />
+      </Button>
+      {/* Desktop-only sidebar restore button (when sidebar is closed) */}
       {!sidebarOpen && (
         <Button
           variant="ghost"
@@ -58,7 +71,7 @@ export function TopBar({
       >
         <Search size={16} className="shrink-0" />
         <span className="flex-1 truncate">Search or jump…</span>
-        <span className="inline-flex items-center gap-1">
+        <span className="hidden items-center gap-1 sm:inline-flex">
           <Kbd>Ctrl</Kbd>
           <Kbd>K</Kbd>
         </span>
@@ -94,7 +107,7 @@ export function TopBar({
       <Button
         variant="outline"
         size="sm"
-        className="gap-2 border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] text-[var(--dispatch-text-secondary)] hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)] hover:text-[var(--dispatch-text-primary)]"
+        className="hidden gap-2 border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] text-[var(--dispatch-text-secondary)] hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)] hover:text-[var(--dispatch-text-primary)] sm:inline-flex"
         onClick={() => setTheme(isLight ? 'dark' : 'light')}
         aria-label={`Switch to ${isLight ? 'dark' : 'light'} mode`}
       >
