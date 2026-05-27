@@ -157,6 +157,7 @@ function DispatchLayoutContent({
           if (!open) closeIssue()
         }}
         direction="bottom"
+        modal={false}
         noBodyStyles
         shouldScaleBackground={false}
       >
