@@ -3,6 +3,19 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
+function useIsDesktop(breakpoint = 1024): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(`(min-width: ${breakpoint}px)`).matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`)
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [breakpoint])
+  return isDesktop
+}
+
 import { AuthGuardDialog } from './AuthGuardDialog'
 import { CommandPalette } from './command-palette'
 import { DetailRail } from './detail-rail'
@@ -42,6 +55,7 @@ function DispatchLayoutContent({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const { selectedIssueId, closeIssue } = useIssueSelection()
+  const isDesktop = useIsDesktop()
   const { active, pathname } = useRouterState({
     select: (state) => ({
       active: getActivePage(state.location.pathname),
@@ -50,6 +64,7 @@ function DispatchLayoutContent({
   })
   const showDetailRail =
     active !== 'Settings' && active !== 'Issue' && selectedIssueId !== null
+  const drawerOpen = showDetailRail && !isDesktop
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -152,12 +167,11 @@ function DispatchLayoutContent({
 
       {/* Mobile/tablet detail panel — vaul bottom drawer, hidden on lg+ */}
       <DrawerPrimitive.Root
-        open={showDetailRail}
+        open={drawerOpen}
         onOpenChange={(open) => {
           if (!open) closeIssue()
         }}
         direction="bottom"
-        modal={false}
         noBodyStyles
         shouldScaleBackground={false}
       >
