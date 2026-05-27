@@ -96,16 +96,18 @@ function DispatchLayoutContent({
         )}
       </AnimatePresence>
 
-      {/* Mobile sidebar — vaul left drawer, hidden on md+ */}
+      {/* Mobile sidebar — vaul bottom drawer, hidden on md+ */}
       <DrawerPrimitive.Root
         open={mobileSidebarOpen}
         onOpenChange={setMobileSidebarOpen}
-        direction="left"
+        direction="bottom"
         noBodyStyles
+        shouldScaleBackground={false}
       >
         <DrawerPrimitive.Portal>
           <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 md:hidden" />
-          <DrawerPrimitive.Content className="dispatch-theme fixed inset-y-0 left-0 z-50 overflow-hidden outline-none md:hidden">
+          <DrawerPrimitive.Content className="dispatch-theme fixed inset-x-0 bottom-0 z-50 flex h-[88vh] flex-col overflow-hidden rounded-t-[18px] outline-none md:hidden">
+            <div className="mx-auto mt-3 mb-1 h-1.5 w-10 shrink-0 rounded-full bg-[var(--dispatch-border-soft)]" />
             <Sidebar active={active} onToggle={() => setMobileSidebarOpen(false)} />
           </DrawerPrimitive.Content>
         </DrawerPrimitive.Portal>
