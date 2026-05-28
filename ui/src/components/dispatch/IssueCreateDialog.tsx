@@ -3,9 +3,8 @@ import {
   ChevronRight,
   Maximize2,
   X,
-  User,
+  Paperclip,
   Tag,
-  MoreHorizontal,
   FolderOpen,
   CircleDot,
   Check,
@@ -18,7 +17,6 @@ import {
   DialogContent,
 } from '#/components/ui/responsive-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover'
-import { Switch } from '#/components/ui/switch'
 
 import { IssueEditor } from './IssueEditor'
 import { createIssue, getDisplayErrorMessage, listProjects } from '#/lib/api'
@@ -62,7 +60,7 @@ function MetaChip({
       type="button"
       onClick={onClick}
       className={[
-        'inline-flex items-center gap-1.5 rounded-[var(--dispatch-r-sm)] px-2 py-1 text-[12px] font-medium transition-colors',
+        'inline-flex items-center gap-1.5 rounded-[var(--dispatch-r-sm)] px-2.5 py-1 text-[13px] font-medium transition-colors',
         'border border-transparent',
         active
           ? 'border-[var(--dispatch-border)] bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-primary)]'
@@ -144,24 +142,24 @@ export function IssueCreateDialog({
       <DialogContent
         showCloseButton={false}
         drawerContentClassName="h-[100dvh] max-h-none rounded-none border-0"
-        className="dispatch-theme flex flex-1 sm:max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-0 text-[var(--dispatch-text-primary)]"
+        className="dispatch-theme flex flex-1 sm:max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] bg-[var(--dispatch-dialog-bg)] p-0 text-[var(--dispatch-text-primary)]"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-1 text-[13px]">
+          <div className="flex items-center gap-1.5 text-[13px]">
             {selectedProject ? (
               <>
-                <span className="font-medium text-[var(--dispatch-text-secondary)]">
+                <span className="rounded border border-[var(--dispatch-border)] bg-[var(--dispatch-bg-hover)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--dispatch-text-secondary)]">
                   {selectedProject.key}
                 </span>
                 <ChevronRight
                   size={12}
                   className="text-[var(--dispatch-text-quaternary)]"
                 />
-                <span className="text-[var(--dispatch-text-secondary)]">New issue</span>
+                <span className="font-medium text-[var(--dispatch-text-primary)]">New issue</span>
               </>
             ) : (
-              <span className="text-[var(--dispatch-text-secondary)]">New issue</span>
+              <span className="font-medium text-[var(--dispatch-text-primary)]">New issue</span>
             )}
           </div>
           <div className="flex items-center gap-0.5">
@@ -200,26 +198,33 @@ export function IssueCreateDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Issue title"
-              className="w-full bg-transparent px-5 pt-1 pb-3 text-[21px] font-semibold text-[var(--dispatch-text-primary)] placeholder:text-[var(--dispatch-text-quaternary)] outline-none"
+              className="w-full bg-transparent px-5 pt-2 pb-2 text-[22px] font-medium text-[var(--dispatch-text-primary)] placeholder:text-[var(--dispatch-text-tertiary)] outline-none"
               required
             />
 
             {/* Editor */}
             <div className="px-5 pb-4">
-              <IssueEditor onChange={setBlocks} />
+              <IssueEditor
+                initialBlocks={[]}
+                placeholder="Write a description..."
+                onChange={setBlocks}
+              />
             </div>
           </div>
 
-          {/* Metadata chips */}
-          <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-[var(--dispatch-border-soft)] px-4 py-2.5">
+          {/* Bottom bar — metadata chips + actions in one row */}
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-[var(--dispatch-border)] px-4 py-3">
+            <button
+              type="button"
+              aria-label="Attach file"
+              className="flex h-7 w-7 items-center justify-center rounded-[var(--dispatch-r-sm)] border border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-quaternary)] transition-colors hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-tertiary)]"
+            >
+              <Paperclip size={14} />
+            </button>
+
             <MetaChip
               icon={<CircleDot size={12} />}
               label="Draft"
-            />
-
-            <MetaChip
-              icon={<User size={12} />}
-              label="Assignee"
             />
 
             <Popover open={projectOpen} onOpenChange={setProjectOpen}>
@@ -267,18 +272,18 @@ export function IssueCreateDialog({
               label="Labels"
             />
 
-            <MetaChip
-              icon={<MoreHorizontal size={12} />}
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="flex shrink-0 items-center gap-3 border-t border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-4 py-3">
             <div className="flex-1" />
+
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" size="sm" className="rounded-[var(--dispatch-r-lg)] text-[var(--dispatch-text-secondary)]">
+                Cancel
+              </Button>
+            </DialogClose>
 
             <Button
               type="submit"
               size="sm"
+              className="rounded-[var(--dispatch-r-lg)] border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]/90"
               disabled={!title.trim() || !projectId}
               loading={isCreating}
               loadingText="Creating…"

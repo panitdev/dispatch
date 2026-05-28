@@ -1,4 +1,5 @@
 import { EditorContent, useEditor } from '@tiptap/react'
+import Placeholder from '@tiptap/extension-placeholder'
 import 'tippy.js/dist/tippy.css'
 
 import { extensions } from '#/editor/extensions'
@@ -15,9 +16,16 @@ interface IssueEditorProps {
   placeholder?: string
 }
 
-export function IssueEditor({ initialBlocks, onChange }: IssueEditorProps) {
+export function IssueEditor({ initialBlocks, onChange, placeholder }: IssueEditorProps) {
+  const resolvedExtensions = placeholder
+    ? [
+        ...extensions.filter((ext) => ext.name !== 'placeholder'),
+        Placeholder.configure({ placeholder: () => placeholder }),
+      ]
+    : extensions
+
   const editor = useEditor({
-    extensions,
+    extensions: resolvedExtensions,
     content: initialBlocks ? deserializeFromBlocks(initialBlocks) : buildDefaultContent(),
     onUpdate: ({ editor: e }) => {
       onChange?.(serializeToBlocks(e))
