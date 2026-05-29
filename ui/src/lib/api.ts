@@ -74,6 +74,7 @@ export type CreateIssueInput = {
   project_id: string
   title: string
   status?: string
+  labels?: string[]
   blocks?: unknown[]
 }
 
@@ -281,6 +282,7 @@ export function createIssue(input: CreateIssueInput) {
     body: JSON.stringify({
       title: input.title,
       status: input.status ?? 'draft',
+      labels: input.labels ?? [],
       blocks: input.blocks ?? [],
     }),
   })

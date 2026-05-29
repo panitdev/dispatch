@@ -6,7 +6,6 @@ import {
   Paperclip,
   Tag,
   FolderOpen,
-  CircleDot,
   Check,
 } from 'lucide-react'
 
@@ -19,6 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover'
 
 import { IssueEditor } from './IssueEditor'
+import { StatusCircle } from './primitives'
 import { createIssue, getDisplayErrorMessage, listProjects } from '#/lib/api'
 import { toast } from 'sonner'
 
@@ -42,36 +42,21 @@ function flattenProjects(
   ])
 }
 
-function MetaChip({
-  icon,
-  label,
-  onClick,
-  active,
-  children,
-}: {
-  icon: React.ReactNode
-  label?: string
-  onClick?: () => void
-  active?: boolean
-  children?: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'inline-flex items-center gap-1.5 rounded-[var(--dispatch-r-sm)] px-2.5 py-1 text-[13px] font-medium transition-colors',
-        'border border-transparent',
-        active
-          ? 'border-[var(--dispatch-border)] bg-[var(--dispatch-bg-hover)] text-[var(--dispatch-text-primary)]'
-          : 'text-[var(--dispatch-text-tertiary)] hover:border-[var(--dispatch-border)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-secondary)]',
-      ].join(' ')}
-    >
-      {icon}
-      {label && <span>{label}</span>}
-      {children}
-    </button>
-  )
+const STATUSES = ['Doing', 'Next', 'Draft', 'Done', 'Cancelled']
+const LABELS = ['bug', 'feature', 'improvement', 'docs']
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function statusLabel(status: string) {
+  return capitalize(status)
+}
+
+function labelsButtonText(labels: string[]) {
+  if (labels.length === 0) return 'Labels'
+  if (labels.length === 1) return labels[0]
+  return `${labels[0]} + ${labels.length - 1} more`
 }
 
 export function IssueCreateDialog({
@@ -87,6 +72,10 @@ export function IssueCreateDialog({
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [projectOpen, setProjectOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const [labelsOpen, setLabelsOpen] = useState(false)
+  const [status, setStatus] = useState('draft')
+  const [labels, setLabels] = useState<string[]>([])
 
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -122,11 +111,14 @@ export function IssueCreateDialog({
       await createIssue({
         project_id: projectId,
         title: title.trim(),
-        status: 'draft',
+        status,
+        labels,
         blocks,
       })
       setTitle('')
       setBlocks([])
+      setStatus('draft')
+      setLabels([])
       onCreated?.()
       onOpenChange(false)
       toast.success('Issue created')
@@ -218,9 +210,43 @@ export function IssueCreateDialog({
               <Paperclip size={14} />
             </Button>
 
-            <Button size="sm" variant="outline" type="button">
-              Draft
-            </Button>
+            <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" type="button">
+                  <StatusCircle status={status} className="size-[14px]" />
+                  {statusLabel(status)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="dispatch-theme w-44 rounded-[var(--dispatch-r-lg)] border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-1.5 text-[var(--dispatch-text-primary)] shadow-[var(--dispatch-shadow-pop)]"
+              >
+                <div className="mb-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--dispatch-text-quaternary)]">
+                  Status
+                </div>
+                {STATUSES.map((s) => {
+                  const value = s.toLowerCase()
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setStatus(value)
+                        setStatusOpen(false)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-[var(--dispatch-r-sm)] px-2 py-1.5 text-left text-[13px] text-[var(--dispatch-text-primary)] hover:bg-[var(--dispatch-bg-hover)]"
+                    >
+                      <StatusCircle status={value} className="size-[14px] shrink-0" />
+                      <span className="flex-1 truncate">{s}</span>
+                      {value === status && (
+                        <Check size={12} className="shrink-0 text-[var(--dispatch-cobalt-bright)]" />
+                      )}
+                    </button>
+                  )
+                })}
+              </PopoverContent>
+            </Popover>
 
             <Popover open={projectOpen} onOpenChange={setProjectOpen}>
               <PopoverTrigger asChild>
@@ -261,10 +287,45 @@ export function IssueCreateDialog({
               </PopoverContent>
             </Popover>
 
-            <Button size="sm" variant="outline" type="button">
-              <Tag size={12} />
-              Labels
-            </Button>
+            <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" type="button">
+                  <Tag size={12} />
+                  {labelsButtonText(labels)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="dispatch-theme w-44 rounded-[var(--dispatch-r-lg)] border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] p-1.5 text-[var(--dispatch-text-primary)] shadow-[var(--dispatch-shadow-pop)]"
+              >
+                <div className="mb-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--dispatch-text-quaternary)]">
+                  Labels
+                </div>
+                {LABELS.map((label) => {
+                  const selected = labels.includes(label)
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        setLabels((current) =>
+                          current.includes(label)
+                            ? current.filter((l) => l !== label)
+                            : [...current, label],
+                        )
+                      }}
+                      className="flex w-full items-center gap-2 rounded-[var(--dispatch-r-sm)] px-2 py-1.5 text-left text-[13px] text-[var(--dispatch-text-primary)] hover:bg-[var(--dispatch-bg-hover)]"
+                    >
+                      <span className="flex-1 truncate">{capitalize(label)}</span>
+                      {selected && (
+                        <Check size={12} className="shrink-0 text-[var(--dispatch-cobalt-bright)]" />
+                      )}
+                    </button>
+                  )
+                })}
+              </PopoverContent>
+            </Popover>
 
             <div className="flex-1" />
 
