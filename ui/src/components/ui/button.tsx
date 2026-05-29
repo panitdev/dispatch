@@ -14,17 +14,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow-[0_1px_0_0_oklch(1_0_0_/_0.15)_inset,0_8px_20px_-8px_color-mix(in_oklab,var(--primary)_55%,transparent)] hover:bg-primary/90",
+          "border-none bg-primary text-primary-foreground shadow-[0_1px_0_0_oklch(1_0_0_/_0.15)_inset,0_8px_20px_-8px_color-mix(in_oklab,var(--primary)_55%,transparent)] hover:bg-primary/90",
         destructive:
-          "border-transparent bg-destructive text-white shadow-[0_1px_0_0_oklch(1_0_0_/_0.12)_inset,0_8px_20px_-8px_color-mix(in_oklab,var(--destructive)_45%,transparent)] hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "border-none bg-destructive text-white shadow-[0_1px_0_0_oklch(1_0_0_/_0.12)_inset,0_8px_20px_-8px_color-mix(in_oklab,var(--destructive)_45%,transparent)] hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
           "border-border bg-card text-foreground hover:border-foreground/30",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/85",
+          "border-none bg-secondary text-secondary-foreground hover:bg-secondary/85",
         ghost:
-          "border-transparent bg-transparent text-foreground hover:bg-muted",
+          "border-none bg-transparent text-foreground hover:bg-muted",
         link:
-          "h-auto rounded-none border-transparent bg-transparent px-0 py-0 text-primary underline-offset-4 hover:underline",
+          "h-auto rounded-none border-none bg-transparent px-0 py-0 text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-5 py-2 has-[>svg]:px-4",

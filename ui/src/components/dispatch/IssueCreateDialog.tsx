@@ -142,7 +142,7 @@ export function IssueCreateDialog({
       <DialogContent
         showCloseButton={false}
         drawerContentClassName="h-[100dvh] max-h-none rounded-none border-0"
-        className="dispatch-theme flex flex-1 sm:max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] bg-[var(--dispatch-dialog-bg)] p-0 text-[var(--dispatch-text-primary)]"
+        className="dispatch-theme flex flex-1 sm:max-h-[88vh] w-full max-w-2xl sm:max-w-2xl flex-col gap-0 overflow-hidden border-[var(--dispatch-border-strong)] p-0 text-[var(--dispatch-text-primary)]"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between px-4 py-3">
@@ -213,27 +213,21 @@ export function IssueCreateDialog({
           </div>
 
           {/* Bottom bar — metadata chips + actions in one row */}
-          <div className="flex shrink-0 items-center gap-1.5 border-t border-[var(--dispatch-border)] px-4 py-3">
-            <button
-              type="button"
-              aria-label="Attach file"
-              className="flex h-7 w-7 items-center justify-center rounded-[var(--dispatch-r-sm)] border border-[var(--dispatch-border-strong)] bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-quaternary)] transition-colors hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-tertiary)]"
-            >
+          <div className="flex shrink-0 items-center gap-1.5 px-4 py-3">
+            <Button size="icon-sm" variant="outline">
               <Paperclip size={14} />
-            </button>
+            </Button>
 
-            <MetaChip
-              icon={<CircleDot size={12} />}
-              label="Draft"
-            />
+            <Button size="sm" variant="outline">
+              Draft
+            </Button>
 
             <Popover open={projectOpen} onOpenChange={setProjectOpen}>
               <PopoverTrigger asChild>
-                <MetaChip
-                  icon={<FolderOpen size={12} />}
-                  label={selectedProject ? `${selectedProject.key} · ${selectedProject.name}` : 'Project'}
-                  active={!!selectedProject}
-                />
+                <Button size="sm" variant="outline">
+                  <FolderOpen size={12} />
+                  {selectedProject ? `${selectedProject.key} · ${selectedProject.name}` : 'Project'}
+                </Button>
               </PopoverTrigger>
               <PopoverContent
                 align="start"
@@ -267,18 +261,12 @@ export function IssueCreateDialog({
               </PopoverContent>
             </Popover>
 
-            <MetaChip
-              icon={<Tag size={12} />}
-              label="Labels"
-            />
+            <Button size="sm" variant="outline">
+              <Tag size={12} />
+              Labels
+            </Button>
 
             <div className="flex-1" />
-
-            <DialogClose asChild>
-              <Button type="button" variant="ghost" size="sm" className="rounded-[var(--dispatch-r-lg)] text-[var(--dispatch-text-secondary)]">
-                Cancel
-              </Button>
-            </DialogClose>
 
             <Button
               type="submit"
@@ -288,7 +276,9 @@ export function IssueCreateDialog({
               loading={isCreating}
               loadingText="Creating…"
             >
-              Create issue
+              <p className="text-sm">
+                Create issue
+              </p>
             </Button>
           </div>
         </form>
