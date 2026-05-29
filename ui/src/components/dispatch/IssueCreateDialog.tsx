@@ -214,11 +214,11 @@ export function IssueCreateDialog({
 
           {/* Bottom bar — metadata chips + actions in one row */}
           <div className="flex shrink-0 items-center gap-1.5 px-4 py-3">
-            <Button size="icon-sm" variant="outline">
+            <Button size="icon-sm" variant="outline" aria-label="Attach file" type="button">
               <Paperclip size={14} />
             </Button>
 
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" type="button">
               Draft
             </Button>
 
@@ -261,7 +261,7 @@ export function IssueCreateDialog({
               </PopoverContent>
             </Popover>
 
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" type="button">
               <Tag size={12} />
               Labels
             </Button>
