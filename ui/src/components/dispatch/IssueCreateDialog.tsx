@@ -224,7 +224,7 @@ export function IssueCreateDialog({
 
             <Popover open={projectOpen} onOpenChange={setProjectOpen}>
               <PopoverTrigger asChild>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" type="button">
                   <FolderOpen size={12} />
                   {selectedProject ? `${selectedProject.key} · ${selectedProject.name}` : 'Project'}
                 </Button>

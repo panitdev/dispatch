@@ -221,7 +221,7 @@ body {
   font-feature-settings: 'ss01', 'cv11', 'tnum';
 }
 
-:root[data-theme='light'] .dispatch-theme {
+.light .dispatch-theme {
   --dispatch-bg-void: oklch(0.955 0.015 85);
   --dispatch-bg-base: oklch(0.985 0.012 85);
   --dispatch-bg-surface: oklch(0.965 0.014 85);
@@ -283,7 +283,7 @@ body {
   mix-blend-mode: overlay;
 }
 
-:root[data-theme='light'] .dispatch-theme::before {
+.light .dispatch-theme::before {
   background-image: none;
   mix-blend-mode: multiply;
 }
@@ -442,4 +442,3 @@ body {
 .tippy-box[data-theme~='slash-command'] .tippy-content {
   padding: 0;
 }
-
