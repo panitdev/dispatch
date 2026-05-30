@@ -1,8 +1,11 @@
 # Agents & Conventions
 
-## Commit message conventions
+## Conventional Commits
 
 This project follows **Conventional Commits** (<https://www.conventionalcommits.org/>).
+
+Available types: feat, fix, chore, refactor, docs, style, test, ci, perf
+Scope must be one of: `api`, `auth`, `db`, `editor`, `ui`, `router`, `markdown`, `infra`, `mcp`
 
 ```
 <type>(<optional scope>): <short summary>
@@ -11,8 +14,6 @@ This project follows **Conventional Commits** (<https://www.conventionalcommits.
 
 [optional footer(s)]
 ```
-
-Available types: feat, fix, chore, refactor, docs, style, test, ci, perf
 
 ## Browser interaction
 
