@@ -5,6 +5,8 @@ use serde_json::Value;
 
 use crate::schema::{issue_labels, issue_relations, issues};
 
+pub use dispatch_issue_body_markdown::IssueBodyBlock;
+
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = issues)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -63,18 +65,6 @@ pub struct IssueRelation {
     pub issue_id: i64,
     pub related_issue_id: i64,
     pub relation_type: String,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct IssueBodyBlock {
-    pub id: String,
-    pub kind: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(default)]
-    pub content: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Value>,
 }
 
 // ---- Request types ----

@@ -36,6 +36,7 @@ dependencies = [
  "diesel",
  "diesel-async",
  "diesel_migrations",
+ "dispatch-issue-body-markdown",
  "dotenvy",
  "reqwest",
  "serde",
@@ -403,6 +404,14 @@ dependencies = [
  "const-oid",
  "crypto-common",
  "ctutils",
+]
+
+[[package]]
+name = "dispatch-issue-body-markdown"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

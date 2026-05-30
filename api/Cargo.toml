@@ -8,6 +8,7 @@ name = "api"
 path = "src/main.rs"
 
 [dependencies]
+dispatch-issue-body-markdown = { path = "../crates/issue-body-markdown" }
 axum             = { version = "0.8", features = ["macros"] }
 tokio            = { version = "1",   features = ["full"] }
 serde            = { version = "1",   features = ["derive"] }

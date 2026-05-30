@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     Json,
 };
 use chrono::Utc;
@@ -15,8 +15,8 @@ use crate::{
     error::{ApiResult, AppError},
     models::issue::{
         validate_labels, validate_priority, validate_status, CreateIssueRequest, Issue,
-        IssueChangeset, IssueLabel, IssueRelation, IssueResponse, ListIssuesQuery, NewIssue,
-        UpdateIssueRequest,
+        IssueBodyBlock, IssueChangeset, IssueLabel, IssueRelation, IssueResponse, ListIssuesQuery,
+        NewIssue, UpdateIssueRequest,
     },
     models::project::Project,
     schema::{issue_labels, issue_relations, issues, projects},
@@ -207,6 +207,26 @@ pub async fn get_new_issues(
         next: summarize(next_rows),
         drafts: summarize(draft_rows),
     }))
+}
+
+pub async fn get_issue_body_markdown(
+    _identity: KratosIdentity,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<([(header::HeaderName, &'static str); 1], String)> {
+    let issue_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let mut conn = state.db.get().await?;
+
+    let issue: Issue = issues::table.find(issue_id).first(&mut conn).await?;
+    let blocks: Vec<IssueBodyBlock> = serde_json::from_value(issue.blocks).unwrap_or_default();
+    let markdown = dispatch_issue_body_markdown::to_markdown(&blocks);
+
+    Ok((
+        [(header::CONTENT_TYPE, "text/markdown; charset=utf-8")],
+        markdown,
+    ))
 }
 
 pub async fn create_issue(

@@ -1,3 +1,3 @@
 [workspace]
-members = ["api"]
+members = ["api", "crates/issue-body-markdown"]
 resolver = "2"

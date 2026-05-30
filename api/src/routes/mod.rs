@@ -32,6 +32,7 @@ pub fn router() -> Router<AppState> {
                     "/projects/{id}/issues",
                     get(issues::list_project_issues).post(issues::create_issue),
                 )
+                .route("/issues/{id}/body.md", get(issues::get_issue_body_markdown))
                 .route(
                     "/issues/{id}",
                     get(issues::get_issue)
