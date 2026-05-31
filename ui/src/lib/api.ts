@@ -174,6 +174,47 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
+async function apiTextFetch(path: string, init?: RequestInit): Promise<string> {
+  const headers = new Headers(init?.headers)
+  headers.set('Accept', 'text/markdown')
+  const apiBaseUrl =
+    typeof window === 'undefined'
+      ? ((init as any)?._baseUrl ?? '').replace(/\/$/, '')
+      : getClientApiBaseUrl()
+  const url = `${apiBaseUrl}${path}`
+
+  if (typeof window === 'undefined') {
+    await logServerResolution(url)
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    credentials: 'include',
+    headers,
+  })
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') ?? ''
+    let message = ''
+
+    if (contentType.includes('application/json')) {
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null
+      message = payload?.error ?? ''
+    } else {
+      message = await response.text()
+    }
+
+    throw new ApiError(
+      response.status,
+      message || `Request failed with status ${response.status}`,
+    )
+  }
+
+  return response.text()
+}
+
 async function logServerResolution(rawUrl: string) {
   const hostname = new URL(rawUrl).hostname
   if (loggedServerHosts.has(hostname)) {
@@ -221,6 +262,10 @@ export function listProjectIssues(
 
 export function getIssue(issueId: string, init?: RequestInit) {
   return apiFetch<ApiIssue>(`/api/v1/issues/${issueId}`, init)
+}
+
+export function getIssueBodyMarkdown(issueId: string, init?: RequestInit) {
+  return apiTextFetch(`/api/v1/issues/${issueId}/body.md`, init)
 }
 
 export function createProject(input: CreateProjectInput) {

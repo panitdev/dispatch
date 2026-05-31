@@ -1,4 +1,5 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { MoreHorizontal, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
@@ -27,6 +28,7 @@ import { IssueContextMenuItems, IssueDropdownMenuItems } from './issue-context-m
 import { StatusCircle } from './primitives'
 import { useIssueSelection } from './issue-selection-context'
 import { deleteIssue, getDisplayErrorMessage, updateIssue } from '@/lib/api'
+import { exportIssueMarkdown } from '@/lib/issue-markdown-export'
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
@@ -188,6 +190,16 @@ export function CompactIssueRow({
     }
   }
 
+  async function handleExportMarkdown() {
+    if (!id) return
+
+    try {
+      await exportIssueMarkdown(id, currentTitle)
+    } catch (e) {
+      toast.error(getDisplayErrorMessage(e, 'Failed to export issue'))
+    }
+  }
+
   const menuProps = {
     status: currentStatus,
     priority: currentPriority,
@@ -200,6 +212,7 @@ export function CompactIssueRow({
     onOpen: id
       ? () => navigate({ to: '/issues/$issueId', params: { issueId: id } })
       : undefined,
+    onExportMarkdown: id ? () => void handleExportMarkdown() : undefined,
   }
 
   if (isDeleted) return null

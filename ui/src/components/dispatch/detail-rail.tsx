@@ -4,6 +4,7 @@ import {
   BookOpen,
   Calendar,
   ChevronDown,
+  Download,
   Edit3,
   ExternalLink,
   MoreHorizontal,
@@ -18,8 +19,16 @@ import {
   ButtonGroup,
   ButtonGroupSeparator,
 } from '@/components/ui/button-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getIssue, getProject } from '@/lib/api'
+import { getDisplayErrorMessage, getIssue, getProject } from '@/lib/api'
+import { exportIssueMarkdown } from '@/lib/issue-markdown-export'
+import { toast } from 'sonner'
 
 import { useIssueSelection } from './issue-selection-context'
 import { ProjectGlyph, StatusPill } from './primitives'
@@ -132,6 +141,14 @@ function IssueDetail({
     (block) => block.content.trim() || block.title?.trim(),
   )
 
+  async function handleExportMarkdown() {
+    try {
+      await exportIssueMarkdown(issue.id, issue.title)
+    } catch (error) {
+      toast.error(getDisplayErrorMessage(error, 'Failed to export issue'))
+    }
+  }
+
   return (
     <>
       <div className="flex flex-1 flex-col gap-[18px] overflow-y-auto px-[22px] py-[22px]">
@@ -197,9 +214,22 @@ function IssueDetail({
           <Tag size={15} />
         </IconButton>
         <div className="flex-1" />
-        <IconButton label="More">
-          <MoreHorizontal size={15} />
-        </IconButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton label="More">
+              <MoreHorizontal size={15} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-auto min-w-[200px]">
+            <DropdownMenuItem
+              onSelect={() => void handleExportMarkdown()}
+              className="py-1.5 text-[13px]"
+            >
+              <Download size={14} className="shrink-0" />
+              Export as Markdown
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ButtonGroup>
           <Button
             size="xs"

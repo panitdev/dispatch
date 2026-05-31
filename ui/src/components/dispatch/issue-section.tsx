@@ -19,6 +19,7 @@ import { IssueContextMenuItems, IssueDropdownMenuItems } from './issue-context-m
 import { useIssueSelection } from './issue-selection-context'
 import { ProjectChip, StatusPill } from './primitives'
 import { getDisplayErrorMessage, updateIssue } from '@/lib/api'
+import { exportIssueMarkdown } from '@/lib/issue-markdown-export'
 
 import type { Issue, Section } from '../../data/dispatch'
 
@@ -115,6 +116,16 @@ function IssueRow({
     }
   }
 
+  async function handleExportMarkdown() {
+    if (!issue.id) return
+
+    try {
+      await exportIssueMarkdown(issue.id, issue.title)
+    } catch (e) {
+      toast.error(getDisplayErrorMessage(e, 'Failed to export issue'))
+    }
+  }
+
   const menuProps = {
     status: currentStatus,
     priority: currentPriority,
@@ -127,6 +138,7 @@ function IssueRow({
     onOpen: issue.id
       ? () => navigate({ to: '/issues/$issueId', params: { issueId: issue.id! } })
       : undefined,
+    onExportMarkdown: issue.id ? () => void handleExportMarkdown() : undefined,
   }
 
   return (

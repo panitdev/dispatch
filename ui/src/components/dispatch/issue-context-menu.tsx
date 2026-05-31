@@ -1,4 +1,4 @@
-import { BarChart2, ExternalLink, Pencil, Tag, Trash2 } from 'lucide-react'
+import { BarChart2, Download, ExternalLink, Pencil, Tag, Trash2 } from 'lucide-react'
 
 import {
   ContextMenuCheckboxItem,
@@ -58,6 +58,7 @@ export type IssueMenuProps = {
   onRename: () => void
   onDelete: () => void
   onOpen?: () => void
+  onExportMarkdown?: () => void
 }
 
 export function IssueContextMenuItems({
@@ -70,6 +71,7 @@ export function IssueContextMenuItems({
   onRename,
   onDelete,
   onOpen,
+  onExportMarkdown,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
 
@@ -83,12 +85,20 @@ export function IssueContextMenuItems({
 
   return (
     <>
-      {onOpen && (
+      {(onOpen || onExportMarkdown) && (
         <>
-          <ContextMenuItem onSelect={onOpen} className={ITEM_CLS}>
-            <ExternalLink size={14} className="shrink-0" />
-            Open
-          </ContextMenuItem>
+          {onOpen && (
+            <ContextMenuItem onSelect={onOpen} className={ITEM_CLS}>
+              <ExternalLink size={14} className="shrink-0" />
+              Open
+            </ContextMenuItem>
+          )}
+          {onExportMarkdown && (
+            <ContextMenuItem onSelect={onExportMarkdown} className={ITEM_CLS}>
+              <Download size={14} className="shrink-0" />
+              Export as Markdown
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
         </>
       )}
@@ -180,6 +190,7 @@ export function IssueDropdownMenuItems({
   onRename,
   onDelete,
   onOpen,
+  onExportMarkdown,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
 
@@ -193,12 +204,20 @@ export function IssueDropdownMenuItems({
 
   return (
     <>
-      {onOpen && (
+      {(onOpen || onExportMarkdown) && (
         <>
-          <DropdownMenuItem onSelect={onOpen} className={ITEM_CLS}>
-            <ExternalLink size={14} className="shrink-0" />
-            Open
-          </DropdownMenuItem>
+          {onOpen && (
+            <DropdownMenuItem onSelect={onOpen} className={ITEM_CLS}>
+              <ExternalLink size={14} className="shrink-0" />
+              Open
+            </DropdownMenuItem>
+          )}
+          {onExportMarkdown && (
+            <DropdownMenuItem onSelect={onExportMarkdown} className={ITEM_CLS}>
+              <Download size={14} className="shrink-0" />
+              Export as Markdown
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
         </>
       )}
