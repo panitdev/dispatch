@@ -4,6 +4,7 @@ use axum::{
 };
 
 use crate::state::AppState;
+use crate::mcp;
 
 pub mod health;
 pub mod issues;
@@ -13,6 +14,7 @@ pub mod projects;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(health::get_health))
+        .nest("/mcp", mcp::router())
         .nest(
             "/api/v1",
             Router::new()

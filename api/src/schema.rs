@@ -1,6 +1,20 @@
 // @generated — keep in sync with migrations/00000000000000_initial/up.sql
 
 diesel::table! {
+    dispatch_api_keys (id) {
+        id           -> Int8,
+        user_id      -> Int8,
+        key_hash     -> Binary,
+        name         -> Text,
+        scopes       -> Array<Text>,
+        agent_id     -> Nullable<Text>,
+        last_used_at -> Nullable<Timestamptz>,
+        created_at   -> Timestamptz,
+        revoked_at   -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
     users (id) {
         id         -> Int8,
         kratos_id  -> Uuid,
@@ -57,8 +71,10 @@ diesel::table! {
 
 diesel::joinable!(issues -> projects (project_id));
 diesel::joinable!(issue_labels -> issues (issue_id));
+diesel::joinable!(dispatch_api_keys -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    dispatch_api_keys,
     users,
     projects,
     issues,

@@ -9,6 +9,7 @@ mod config;
 mod db;
 mod error;
 mod ids;
+mod mcp;
 mod models;
 mod routes;
 mod schema;
