@@ -1,7 +1,7 @@
 use axum::{
     extract::{Form, Query, State},
     http::{header, HeaderMap, StatusCode},
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Json, Redirect, Response},
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
@@ -52,6 +52,19 @@ struct KratosIdentityPayload {
 #[derive(Deserialize)]
 struct KratosTraits {
     username: String,
+}
+
+pub async fn oauth_protected_resource_metadata(
+    State(state): State<AppState>,
+) -> Json<serde_json::Value> {
+    let resource = state.config.dispatch_public_url.trim_end_matches('/').to_owned();
+    let authorization_server = state.config.hydra_public_url.trim_end_matches('/').to_owned();
+    Json(serde_json::json!({
+        "resource": resource,
+        "authorization_servers": [authorization_server],
+        "bearer_methods_supported": ["header"],
+        "scopes_supported": ["dispatch:read", "dispatch:write"],
+    }))
 }
 
 pub async fn oauth_metadata(State(state): State<AppState>) -> Result<Response, StatusCode> {
