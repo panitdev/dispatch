@@ -12,7 +12,7 @@ use crate::{
 
 use super::{body_markdown, map_db_error, parse_priority, parse_snowflake_id};
 use crate::mcp::{
-    auth::ApiKeyIdentity,
+    auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
 };
 
@@ -32,7 +32,7 @@ struct UpdateIssuePatch {
 }
 
 pub async fn call(
-    identity: &ApiKeyIdentity,
+    identity: &McpIdentity,
     state: &AppState,
     args: Value,
 ) -> Result<Value, JsonRpcError> {
@@ -64,8 +64,8 @@ pub async fn call(
         .filter(issues::id.eq(issue_id))
         .filter(
             issues::author_id
-                .eq(identity.user_id)
-                .or(issues::assignee_id.eq(Some(identity.user_id))),
+                .eq(identity.user_id())
+                .or(issues::assignee_id.eq(Some(identity.user_id()))),
         )
         .select(Issue::as_select())
         .first(&mut conn)

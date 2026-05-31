@@ -6,6 +6,7 @@ use crate::{config::Config, db::DbPool, ids::IdGen};
 pub struct AppState {
     pub db: DbPool,
     pub http: reqwest::Client,
+    pub hydra_admin: reqwest::Client,
     pub config: Config,
     pub ids: IdGen,
 }

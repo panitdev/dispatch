@@ -1,10 +1,7 @@
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 
-use crate::state::AppState;
 use crate::mcp;
+use crate::{oauth, state::AppState};
 
 pub mod health;
 pub mod issues;
@@ -14,6 +11,16 @@ pub mod projects;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/health", get(health::get_health))
+        .route(
+            "/.well-known/oauth-authorization-server",
+            get(oauth::handlers::oauth_metadata),
+        )
+        .route("/oauth/login", get(oauth::handlers::oauth_login))
+        .route(
+            "/oauth/consent",
+            get(oauth::handlers::oauth_consent_show).post(oauth::handlers::oauth_consent_submit),
+        )
+        .route("/oauth/error", get(oauth::handlers::oauth_error))
         .nest("/mcp", mcp::router())
         .nest(
             "/api/v1",

@@ -11,6 +11,7 @@ mod error;
 mod ids;
 mod mcp;
 mod models;
+mod oauth;
 mod routes;
 mod schema;
 mod state;
@@ -51,7 +52,18 @@ async fn main() {
 
     let ids = ids::IdGen::new(config.snowflake_machine_id, config.snowflake_node_id);
 
-    let state = state::AppState { db, http, ids, config: config.clone() };
+    let hydra_admin = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .expect("failed to build Hydra Admin HTTP client");
+
+    let state = state::AppState {
+        db,
+        http,
+        hydra_admin,
+        ids,
+        config: config.clone(),
+    };
 
     let cors = {
         let origin: HeaderValue = config
@@ -60,7 +72,13 @@ async fn main() {
             .expect("FRONTEND_ORIGIN is not a valid header value");
         CorsLayer::new()
             .allow_origin(origin)
-            .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE, Method::OPTIONS])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PATCH,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
             .allow_headers([
                 header::CONTENT_TYPE,
                 header::AUTHORIZATION,

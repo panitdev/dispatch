@@ -17,7 +17,7 @@ use serde_json::{json, Value};
 use crate::state::AppState;
 
 use self::{
-    auth::ApiKeyIdentity,
+    auth::McpIdentity,
     protocol::{
         InitializeResult, JsonRpcError, JsonRpcRequest, JsonRpcResponse, ResourcesCapability,
         ServerCapabilities, ServerInfo, ToolsCapability, INVALID_PARAMS, INVALID_REQUEST,
@@ -30,7 +30,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn handle_mcp(
-    identity: ApiKeyIdentity,
+    identity: McpIdentity,
     State(state): State<AppState>,
     headers: HeaderMap,
     body: Bytes,
@@ -66,8 +66,20 @@ async fn handle_mcp(
             "initialize" => handle_initialize(),
             "tools/list" => handle_tools_list(),
             "tools/call" => handle_tools_call(&identity, &state, &body.params).await,
-            "resources/list" => resources::issue::list(&identity, &state).await,
-            "resources/read" => resources::issue::read(&identity, &state, &body.params).await,
+            "resources/list" => {
+                if let Err(error) = require_scope(&identity, "dispatch:read") {
+                    Err(error)
+                } else {
+                    resources::issue::list(&identity, &state).await
+                }
+            }
+            "resources/read" => {
+                if let Err(error) = require_scope(&identity, "dispatch:read") {
+                    Err(error)
+                } else {
+                    resources::issue::read(&identity, &state, &body.params).await
+                }
+            }
             _ => Err(JsonRpcError::new(METHOD_NOT_FOUND, "method not found")),
         }
     };
@@ -117,7 +129,7 @@ struct ToolCallParams {
 }
 
 async fn handle_tools_call(
-    identity: &ApiKeyIdentity,
+    identity: &McpIdentity,
     state: &AppState,
     params: &Option<Value>,
 ) -> Result<Value, JsonRpcError> {
@@ -125,12 +137,30 @@ async fn handle_tools_call(
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid tools/call params"))?;
 
     match params.name.as_str() {
-        "dispatch_get_issue" => tools::get_issue::call(identity, state, params.arguments).await,
-        "dispatch_list_issues" => tools::list_issues::call(identity, state, params.arguments).await,
+        "dispatch_get_issue" => {
+            require_scope(identity, "dispatch:read")?;
+            tools::get_issue::call(identity, state, params.arguments).await
+        }
+        "dispatch_list_issues" => {
+            require_scope(identity, "dispatch:read")?;
+            tools::list_issues::call(identity, state, params.arguments).await
+        }
         "dispatch_update_issue" => {
+            require_scope(identity, "dispatch:write")?;
             tools::update_issue::call(identity, state, params.arguments).await
         }
         _ => Err(JsonRpcError::new(INVALID_PARAMS, "unknown tool")),
+    }
+}
+
+fn require_scope(identity: &McpIdentity, scope: &str) -> Result<(), JsonRpcError> {
+    if identity.has_scope(scope) {
+        Ok(())
+    } else {
+        Err(JsonRpcError::new(
+            INVALID_REQUEST,
+            format!("insufficient scope: {scope}"),
+        ))
     }
 }
 
@@ -186,5 +216,29 @@ mod tests {
         );
 
         assert!(accepts_sse(&headers));
+    }
+
+    #[test]
+    fn api_key_identity_bypasses_scope_checks() {
+        let identity = McpIdentity::ApiKey {
+            user_id: 1,
+            agent_id: None,
+        };
+
+        assert!(require_scope(&identity, "dispatch:write").is_ok());
+    }
+
+    #[test]
+    fn oauth_identity_requires_matching_scope() {
+        let identity = McpIdentity::OAuth {
+            user_id: 1,
+            subject: "00000000-0000-0000-0000-000000000000".to_owned(),
+            scopes: vec!["dispatch:read".to_owned()],
+        };
+
+        assert!(require_scope(&identity, "dispatch:read").is_ok());
+        let error = require_scope(&identity, "dispatch:write").unwrap_err();
+        assert_eq!(error.code, INVALID_REQUEST);
+        assert_eq!(error.message, "insufficient scope: dispatch:write");
     }
 }

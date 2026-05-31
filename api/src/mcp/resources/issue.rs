@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 
 use crate::{
     mcp::{
-        auth::ApiKeyIdentity,
+        auth::McpIdentity,
         protocol::{JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
         tools::{body_markdown, iso8601, map_db_error, parse_snowflake_id, priority_output},
     },
@@ -19,7 +19,7 @@ struct ReadResourceParams {
     uri: String,
 }
 
-pub async fn list(identity: &ApiKeyIdentity, state: &AppState) -> Result<Value, JsonRpcError> {
+pub async fn list(identity: &McpIdentity, state: &AppState) -> Result<Value, JsonRpcError> {
     let mut conn = state
         .db
         .get()
@@ -29,8 +29,8 @@ pub async fn list(identity: &ApiKeyIdentity, state: &AppState) -> Result<Value, 
     let rows: Vec<Issue> = issues::table
         .filter(
             issues::author_id
-                .eq(identity.user_id)
-                .or(issues::assignee_id.eq(Some(identity.user_id))),
+                .eq(identity.user_id())
+                .or(issues::assignee_id.eq(Some(identity.user_id()))),
         )
         .order_by((issues::updated_at.desc(), issues::id.desc()))
         .limit(50)
@@ -55,7 +55,7 @@ pub async fn list(identity: &ApiKeyIdentity, state: &AppState) -> Result<Value, 
 }
 
 pub async fn read(
-    identity: &ApiKeyIdentity,
+    identity: &McpIdentity,
     state: &AppState,
     params: &Option<Value>,
 ) -> Result<Value, JsonRpcError> {
@@ -74,8 +74,8 @@ pub async fn read(
         .filter(issues::id.eq(issue_id))
         .filter(
             issues::author_id
-                .eq(identity.user_id)
-                .or(issues::assignee_id.eq(Some(identity.user_id))),
+                .eq(identity.user_id())
+                .or(issues::assignee_id.eq(Some(identity.user_id()))),
         )
         .select(Issue::as_select())
         .first(&mut conn)
