@@ -16,9 +16,12 @@ FROM chef AS planner
 
 COPY Cargo.toml Cargo.lock ./
 COPY api/Cargo.toml api/Cargo.toml
+COPY crates/issue-body-markdown/Cargo.toml crates/issue-body-markdown/Cargo.toml
 
 RUN mkdir -p api/src \
-    && printf 'fn main() {}\n' > api/src/main.rs
+    && printf 'fn main() {}\n' > api/src/main.rs \
+    && mkdir -p crates/issue-body-markdown/src \
+    && printf '' > crates/issue-body-markdown/src/lib.rs
 
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -35,6 +38,7 @@ FROM cacher AS builder
 
 COPY Cargo.toml Cargo.lock ./
 COPY api ./api
+COPY crates ./crates
 
 RUN --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/usr/local/cargo/registry \

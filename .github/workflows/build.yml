@@ -9,6 +9,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "api/**"
+      - "crates/**"
       - "ui/**"
   workflow_dispatch:
 
@@ -56,7 +57,7 @@ jobs:
             [[ -z "$file" ]] && continue
 
             case "$file" in
-              .github/workflows/build.yml|Cargo.toml|Cargo.lock|api/*)
+              .github/workflows/build.yml|Cargo.toml|Cargo.lock|api/*|crates/*)
                 api=true
                 ;;
               ui/*)
