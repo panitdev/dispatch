@@ -1,9 +1,9 @@
 import { Calendar, Folder } from 'lucide-react'
 import * as React from 'react'
 
-import { AnimatedField } from '../ui/animated-field'
+import { AnimatedField } from '../../components/ui/animated-field'
 import { pageCopy } from '../../data/dispatch'
-import { PageHead } from './page-head'
+import { PageHead } from '../../components/dispatch/page-head'
 
 export function SettingsPage() {
   const [capturePrefix, setCapturePrefix] = React.useState('#Strophe')

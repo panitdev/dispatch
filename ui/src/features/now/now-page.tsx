@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import { IssueCreateDialog } from './IssueCreateDialog'
-import { useIssueSelection } from './issue-selection-context'
-import { PageHead } from './page-head'
-import { WorkListPage } from './work-list-page'
+import { IssueCreateDialog } from '../../components/dispatch/IssueCreateDialog'
+import { useIssueSelection } from '../../components/dispatch/issue-selection-context'
+import { PageHead } from '../../components/dispatch/page-head'
+import { WorkListPage } from '../../components/dispatch/work-list-page'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 

@@ -13,8 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { CompactIssueRow } from './compact-issue-row'
-import { useIssueSelection } from './issue-selection-context'
+import { CompactIssueRow } from '../../components/dispatch/compact-issue-row'
+import { useIssueSelection } from '../../components/dispatch/issue-selection-context'
 
 import {
   updateProject,

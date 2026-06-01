@@ -4,7 +4,7 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import {
   ProjectPage,
   ProjectPageSkeleton,
-} from '../components/dispatch/project-page'
+} from '../features/projects/project-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
 import { getProjectPageData } from '../lib/server-data'
 
