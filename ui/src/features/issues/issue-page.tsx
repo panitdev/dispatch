@@ -9,7 +9,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatStatusLabel } from '@/data/dispatch'
 
-import { ProjectGlyph, StatusCircle, StatusPill } from './primitives'
+import { ProjectGlyph, StatusCircle, StatusPill } from '../../components/dispatch/primitives'
 
 import type React from 'react'
 import type { ApiIssue, ApiProject } from '@/lib/api'

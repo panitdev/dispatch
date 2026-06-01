@@ -2,8 +2,8 @@ import { FilePenLine } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 
-import { PageHead } from './page-head'
-import { WorkListPage } from './work-list-page'
+import { PageHead } from '../../components/dispatch/page-head'
+import { WorkListPage } from '../../components/dispatch/work-list-page'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 

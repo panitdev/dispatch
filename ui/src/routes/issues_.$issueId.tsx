@@ -5,7 +5,7 @@ import {
   IssuePage,
   IssuePageError,
   IssuePageSkeleton,
-} from '../components/dispatch/issue-page'
+} from '../features/issues/issue-page'
 import { getIssuePageData } from '../lib/server-data'
 
 export const Route = createFileRoute('/issues_/$issueId')({

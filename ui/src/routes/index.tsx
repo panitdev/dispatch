@@ -1,7 +1,7 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-import { NowPage, NowPageSkeleton } from '../components/dispatch/now-page'
+import { NowPage, NowPageSkeleton } from '../features/now/now-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
 import { getNowPageData } from '../lib/server-data'
 import { pageCopy } from '../data/dispatch'

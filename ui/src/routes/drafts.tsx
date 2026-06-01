@@ -1,7 +1,7 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
-import { DraftsPage, DraftsPageSkeleton } from '../components/dispatch/drafts-page'
+import { DraftsPage, DraftsPageSkeleton } from '../features/drafts/drafts-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
 import { getDraftsPageData } from '../lib/server-data'
 import { pageCopy } from '../data/dispatch'

@@ -5,9 +5,9 @@ import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import { PageHead } from './page-head'
-import { ProjectCreateDialog } from './ProjectCreateDialog'
-import { ProjectGlyph, StatusPill } from './primitives'
+import { PageHead } from '../../components/dispatch/page-head'
+import { ProjectCreateDialog } from '../../components/dispatch/ProjectCreateDialog'
+import { ProjectGlyph, StatusPill } from '../../components/dispatch/primitives'
 import { getDisplayErrorMessage } from '@/lib/api'
 import { getProjectsPageData } from '@/lib/server-data'
 
