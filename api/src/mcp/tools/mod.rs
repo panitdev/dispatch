@@ -51,17 +51,21 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "get_issue",
-            description: "Fetch a single issue by ID with full content (description included). Optionally include comments, edit history, and linked relations.",
+            description: "Fetch a single issue by issue ID with full content (description included). Prefer the id from Dispatch web URLs or search/list results; key is also accepted. Optionally include comments, edit history, and linked relations.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string", "description": "Snowflake ID of the issue." },
+                    "id": { "type": "string", "description": "Issue ID from the Dispatch web URL or search/list results." },
+                    "key": { "type": "string", "description": "Issue key visible in Dispatch, such as PROJ-123." },
                     "include": {
                         "type": "array",
                         "items": { "type": "string", "enum": ["comments", "history", "relations"] }
                     }
                 },
-                "required": ["id"],
+                "oneOf": [
+                    { "required": ["id"] },
+                    { "required": ["key"] }
+                ],
                 "additionalProperties": false
             }),
         },
@@ -110,11 +114,12 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "update_issue",
-            description: "Partially update an issue. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
+            description: "Partially update an issue by issue ID. Prefer the id from Dispatch web URLs or search/list results; key is also accepted. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string" },
+                    "id": { "type": "string", "description": "Issue ID from the Dispatch web URL or search/list results." },
+                    "key": { "type": "string", "description": "Issue key visible in Dispatch, such as PROJ-123." },
                     "patch": {
                         "type": "object",
                         "properties": {
@@ -131,7 +136,11 @@ pub fn all() -> Vec<Tool> {
                         "minProperties": 1
                     }
                 },
-                "required": ["id", "patch"],
+                "required": ["patch"],
+                "oneOf": [
+                    { "required": ["id"] },
+                    { "required": ["key"] }
+                ],
                 "additionalProperties": false
             }),
         },
@@ -202,6 +211,43 @@ pub(crate) fn parse_snowflake_id(value: &str, field: &str) -> Result<i64, JsonRp
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, format!("invalid {field}: {value}")))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum IssueIdentifier {
+    Id(i64),
+    Key(String),
+}
+
+impl IssueIdentifier {
+    pub(crate) fn label(&self) -> String {
+        match self {
+            Self::Id(id) => id.to_string(),
+            Self::Key(key) => key.clone(),
+        }
+    }
+}
+
+pub(crate) fn parse_issue_identifier(
+    id: Option<String>,
+    key: Option<String>,
+) -> Result<IssueIdentifier, JsonRpcError> {
+    match (id, key) {
+        (Some(id), None) => parse_snowflake_id(&id, "id").map(IssueIdentifier::Id),
+        (None, Some(key)) if !key.is_empty() => Ok(IssueIdentifier::Key(key)),
+        (None, Some(_)) => Err(JsonRpcError::new(INVALID_PARAMS, "key must not be empty")),
+        (None, None) => Err(JsonRpcError::new(INVALID_PARAMS, "provide id or key")),
+        (Some(_), Some(_)) => Err(JsonRpcError::new(
+            INVALID_PARAMS,
+            "provide only one of id or key",
+        )),
+    }
+}
+
+pub(crate) fn parse_issue_identifier_value(value: &str) -> IssueIdentifier {
+    parse_snowflake_id(value, "id")
+        .map(IssueIdentifier::Id)
+        .unwrap_or_else(|_| IssueIdentifier::Key(value.to_owned()))
+}
+
 pub(crate) fn not_found_error(id: &str) -> Result<Value, JsonRpcError> {
     dispatch_error_result("NOT_FOUND", format!("not found: {id}"), None, None)
 }
@@ -241,12 +287,12 @@ pub(crate) fn iso8601(value: DateTime<Utc>) -> String {
 
 pub(crate) fn status_from_state_group(group: &str) -> &'static str {
     match group {
-        "backlog"   => "draft",
+        "backlog" => "draft",
         "unstarted" => "next",
-        "started"   => "doing",
+        "started" => "doing",
         "completed" => "done",
         "cancelled" => "cancelled",
-        _           => "draft",
+        _ => "draft",
     }
 }
 
@@ -269,6 +315,39 @@ mod tests {
         assert_eq!(tools[6].name, "comment_on_issue");
         assert_eq!(tools[7].name, "relate_issues");
         assert_eq!(tools[8].name, "bulk_update_issues");
+        assert_eq!(tools[1].input_schema["oneOf"][0]["required"], json!(["id"]));
+        assert_eq!(
+            tools[1].input_schema["oneOf"][1]["required"],
+            json!(["key"])
+        );
+        assert_eq!(tools[5].input_schema["required"], json!(["patch"]));
+        assert_eq!(tools[5].input_schema["oneOf"][0]["required"], json!(["id"]));
+        assert_eq!(
+            tools[5].input_schema["oneOf"][1]["required"],
+            json!(["key"])
+        );
+    }
+
+    #[test]
+    fn accepts_issue_identifier_id_or_key() {
+        assert_eq!(
+            parse_issue_identifier(Some("123".to_owned()), None).unwrap(),
+            IssueIdentifier::Id(123)
+        );
+        assert_eq!(
+            parse_issue_identifier(None, Some("DIS-1".to_owned())).unwrap(),
+            IssueIdentifier::Key("DIS-1".to_owned())
+        );
+        assert_eq!(
+            parse_issue_identifier(None, None).unwrap_err().message,
+            "provide id or key"
+        );
+        assert_eq!(
+            parse_issue_identifier(Some("123".to_owned()), Some("DIS-1".to_owned()))
+                .unwrap_err()
+                .message,
+            "provide only one of id or key"
+        );
     }
 
     #[test]
@@ -283,9 +362,9 @@ mod tests {
 
     #[test]
     fn status_mapping_covers_all_groups() {
-        assert_eq!(status_from_state_group("backlog"),   "draft");
+        assert_eq!(status_from_state_group("backlog"), "draft");
         assert_eq!(status_from_state_group("unstarted"), "next");
-        assert_eq!(status_from_state_group("started"),   "doing");
+        assert_eq!(status_from_state_group("started"), "doing");
         assert_eq!(status_from_state_group("completed"), "done");
         assert_eq!(status_from_state_group("cancelled"), "cancelled");
     }

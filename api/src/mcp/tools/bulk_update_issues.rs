@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
-    models::issue::{IssueLabelRef, IssueChangeset},
+    models::issue::{IssueChangeset, IssueLabelRef},
     schema::{issue_label_refs, issues, labels, projects, states, users},
     state::AppState,
 };
@@ -17,14 +17,12 @@ use crate::mcp::{
 };
 use crate::models::label::State;
 
-fn deserialize_optional_nullable<'de, T, D>(
-    deserializer: D,
-) -> Result<Option<Option<T>>, D::Error>
+fn deserialize_optional_nullable<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     T: Deserialize<'de>,
     D: serde::Deserializer<'de>,
 {
-    Option::<Option<T>>::deserialize(deserializer)
+    Ok(Some(Option::<T>::deserialize(deserializer)?))
 }
 
 #[derive(Deserialize)]

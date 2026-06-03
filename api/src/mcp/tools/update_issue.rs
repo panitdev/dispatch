@@ -5,12 +5,15 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
-    models::issue::{Issue, IssueLabelRef, IssueChangeset, NewIssueHistoryEntry},
+    models::issue::{Issue, IssueChangeset, IssueLabelRef, NewIssueHistoryEntry},
     schema::{issue_history, issue_label_refs, issues, labels, projects, states, users},
     state::AppState,
 };
 
-use super::{body_markdown, invalid_reference_error, iso8601, map_db_error, not_found_error, parse_snowflake_id, status_from_state_group};
+use super::{
+    body_markdown, invalid_reference_error, iso8601, map_db_error, not_found_error,
+    parse_issue_identifier, parse_snowflake_id, status_from_state_group, IssueIdentifier,
+};
 use crate::mcp::{
     auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
@@ -21,27 +24,25 @@ use crate::models::label::State;
 // None      = field absent from JSON (do not change)
 // Some(None) = field explicitly null (clear)
 // Some(Some(v)) = field set to v
-fn deserialize_optional_nullable<'de, T, D>(
-    deserializer: D,
-) -> Result<Option<Option<T>>, D::Error>
+fn deserialize_optional_nullable<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     T: Deserialize<'de>,
     D: serde::Deserializer<'de>,
 {
-    let v = Option::<Option<T>>::deserialize(deserializer)?;
-    Ok(v)
+    Ok(Some(Option::<T>::deserialize(deserializer)?))
 }
 
 #[derive(Deserialize)]
 struct UpdateIssueArgs {
-    id: String,
+    id: Option<String>,
+    key: Option<String>,
     patch: UpdateIssuePatch,
 }
 
 #[derive(Deserialize, Default)]
 struct UpdateIssuePatch {
     title: Option<String>,
-    description: Option<Value>,      // String | null
+    description: Option<Value>, // String | null
     state_id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     assignee_id: Option<Option<String>>,
@@ -59,8 +60,9 @@ pub async fn call(
 ) -> Result<Value, JsonRpcError> {
     let args: UpdateIssueArgs = serde_json::from_value(args)
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid update_issue arguments"))?;
-
-    let issue_id = parse_snowflake_id(&args.id, "id")?;
+    let UpdateIssueArgs { id, key, patch } = args;
+    let identifier = parse_issue_identifier(id, key)?;
+    let identifier_label = identifier.label();
 
     let mut conn = state
         .db
@@ -68,28 +70,30 @@ pub async fn call(
         .await
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
-    let current: Issue = match issues::table
-        .find(issue_id)
-        .select(Issue::as_select())
-        .first(&mut conn)
-        .await
-    {
-        Ok(i) => i,
-        Err(diesel::result::Error::NotFound) => return not_found_error(&args.id),
-        Err(e) => return Err(map_db_error(e, Some(&args.id))),
+    let mut query = issues::table.into_boxed();
+    query = match identifier {
+        IssueIdentifier::Id(id) => query.filter(issues::id.eq(id)),
+        IssueIdentifier::Key(key) => query.filter(issues::key.eq(key)),
     };
+
+    let current: Issue = match query.select(Issue::as_select()).first(&mut conn).await {
+        Ok(i) => i,
+        Err(diesel::result::Error::NotFound) => return not_found_error(&identifier_label),
+        Err(e) => return Err(map_db_error(e, Some(&identifier_label))),
+    };
+    let issue_id = current.id;
 
     let mut changeset = IssueChangeset::default();
     let mut history_entries: Vec<(&'static str, Option<String>, Option<String>)> = vec![];
 
-    if let Some(title) = args.patch.title {
+    if let Some(title) = patch.title {
         if title != current.title {
             history_entries.push(("title", Some(current.title.clone()), Some(title.clone())));
             changeset.title = Some(title);
         }
     }
 
-    if let Some(desc_val) = args.patch.description {
+    if let Some(desc_val) = patch.description {
         let new_blocks = match &desc_val {
             Value::Null => Value::Array(vec![]),
             Value::String(md) => {
@@ -99,7 +103,12 @@ pub async fn call(
                     Err(_) => Value::Array(vec![]),
                 }
             }
-            _ => return Err(JsonRpcError::new(INVALID_PARAMS, "description must be a string or null")),
+            _ => {
+                return Err(JsonRpcError::new(
+                    INVALID_PARAMS,
+                    "description must be a string or null",
+                ))
+            }
         };
         let old_md = body_markdown(current.blocks.clone()).ok();
         let new_md = body_markdown(new_blocks.clone()).ok();
@@ -109,7 +118,7 @@ pub async fn call(
         }
     }
 
-    if let Some(sid_str) = args.patch.state_id {
+    if let Some(sid_str) = patch.state_id {
         let sid = parse_snowflake_id(&sid_str, "state_id")?;
         let new_state: State = match states::table
             .find(sid)
@@ -135,17 +144,13 @@ pub async fn call(
             } else {
                 None
             };
-            history_entries.push((
-                "state_id",
-                old_state_name,
-                Some(new_state.name.clone()),
-            ));
+            history_entries.push(("state_id", old_state_name, Some(new_state.name.clone())));
             changeset.state_id = Some(sid);
             changeset.status = Some(status_from_state_group(&new_state.group_name).to_owned());
         }
     }
 
-    if let Some(assignee_val) = args.patch.assignee_id {
+    if let Some(assignee_val) = patch.assignee_id {
         let new_assignee: Option<i64> = match assignee_val {
             None => None,
             Some(ref id_str) => {
@@ -177,7 +182,7 @@ pub async fn call(
         }
     }
 
-    if let Some(priority) = args.patch.priority {
+    if let Some(priority) = patch.priority {
         if !(0..=4).contains(&priority) {
             return Err(JsonRpcError::new(INVALID_PARAMS, "priority must be 0-4"));
         }
@@ -191,7 +196,7 @@ pub async fn call(
         }
     }
 
-    if let Some(pid_str) = args.patch.project_id {
+    if let Some(pid_str) = patch.project_id {
         let pid = parse_snowflake_id(&pid_str, "project_id")?;
         let proj_exists: i64 = projects::table
             .filter(crate::schema::projects::id.eq(pid))
@@ -212,13 +217,16 @@ pub async fn call(
         }
     }
 
-    if let Some(parent_val) = args.patch.parent_id {
+    if let Some(parent_val) = patch.parent_id {
         let new_parent: Option<i64> = match parent_val {
             None => None,
             Some(ref id_str) => {
                 let pid = parse_snowflake_id(id_str, "parent_id")?;
                 if pid == issue_id {
-                    return Err(JsonRpcError::new(INVALID_PARAMS, "issue cannot be its own parent"));
+                    return Err(JsonRpcError::new(
+                        INVALID_PARAMS,
+                        "issue cannot be its own parent",
+                    ));
                 }
                 let exists: i64 = issues::table
                     .filter(issues::id.eq(pid))
@@ -257,13 +265,13 @@ pub async fn call(
             .set(&changeset)
             .get_result(&mut conn)
             .await
-            .map_err(|e| map_db_error(e, Some(&args.id)))?
+            .map_err(|e| map_db_error(e, Some(&identifier_label)))?
     } else {
         current.clone()
     };
 
     // Replace label set if provided
-    if let Some(new_label_ids) = args.patch.label_ids {
+    if let Some(new_label_ids) = patch.label_ids {
         let lids: Vec<i64> = new_label_ids
             .iter()
             .map(|id| parse_snowflake_id(id, "label_ids"))
@@ -338,6 +346,7 @@ pub async fn call(
 
     json_text_result(json!({
         "id":          updated.id.to_string(),
+        "key":         updated.key,
         "title":       updated.title,
         "description": description,
         "state":       state_ref,

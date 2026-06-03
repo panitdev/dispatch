@@ -9,11 +9,15 @@ use crate::{
         label::State,
         user::User,
     },
-    schema::{issue_comments, issue_history, issue_label_refs, issue_relations, issues, states, users},
+    schema::{
+        issue_comments, issue_history, issue_label_refs, issue_relations, issues, states, users,
+    },
     state::AppState,
 };
 
-use super::{body_markdown, iso8601, map_db_error, not_found_error, parse_snowflake_id};
+use super::{
+    body_markdown, iso8601, map_db_error, not_found_error, parse_issue_identifier, IssueIdentifier,
+};
 use crate::mcp::{
     auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
@@ -21,7 +25,8 @@ use crate::mcp::{
 
 #[derive(Deserialize)]
 struct GetIssueArgs {
-    id: String,
+    id: Option<String>,
+    key: Option<String>,
     #[serde(default)]
     include: Vec<String>,
 }
@@ -33,7 +38,9 @@ pub async fn call(
 ) -> Result<Value, JsonRpcError> {
     let args: GetIssueArgs = serde_json::from_value(args)
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid get_issue arguments"))?;
-    let issue_id = parse_snowflake_id(&args.id, "id")?;
+    let GetIssueArgs { id, key, include } = args;
+    let identifier = parse_issue_identifier(id, key)?;
+    let identifier_label = identifier.label();
 
     let mut conn = state
         .db
@@ -41,16 +48,18 @@ pub async fn call(
         .await
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
-    let issue: Issue = match issues::table
-        .filter(issues::id.eq(issue_id))
-        .select(Issue::as_select())
-        .first(&mut conn)
-        .await
-    {
-        Ok(i) => i,
-        Err(diesel::result::Error::NotFound) => return not_found_error(&args.id),
-        Err(e) => return Err(map_db_error(e, Some(&args.id))),
+    let mut query = issues::table.into_boxed();
+    query = match identifier {
+        IssueIdentifier::Id(id) => query.filter(issues::id.eq(id)),
+        IssueIdentifier::Key(key) => query.filter(issues::key.eq(key)),
     };
+
+    let issue: Issue = match query.select(Issue::as_select()).first(&mut conn).await {
+        Ok(i) => i,
+        Err(diesel::result::Error::NotFound) => return not_found_error(&identifier_label),
+        Err(e) => return Err(map_db_error(e, Some(&identifier_label))),
+    };
+    let issue_id = issue.id;
 
     let description = body_markdown(issue.blocks.clone()).ok();
 
@@ -80,9 +89,9 @@ pub async fn call(
         .unwrap_or_default();
     let label_ids: Vec<String> = label_refs.iter().map(|r| r.label_id.to_string()).collect();
 
-    let include_comments = args.include.iter().any(|s| s == "comments");
-    let include_history = args.include.iter().any(|s| s == "history");
-    let include_relations = args.include.iter().any(|s| s == "relations");
+    let include_comments = include.iter().any(|s| s == "comments");
+    let include_history = include.iter().any(|s| s == "history");
+    let include_relations = include.iter().any(|s| s == "relations");
 
     let comments_val: Option<Value> = if include_comments {
         let comments: Vec<IssueComment> = issue_comments::table
@@ -208,6 +217,7 @@ pub async fn call(
 
     let mut result = json!({
         "id":          issue.id.to_string(),
+        "key":         issue.key,
         "title":       issue.title,
         "description": description,
         "state":       state_ref,
@@ -236,19 +246,20 @@ pub async fn call(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone, Utc};
     use serde_json::json;
 
     #[test]
-    fn get_issue_args_requires_id() {
-        let err = serde_json::from_value::<GetIssueArgs>(json!({}));
-        assert!(err.is_err());
+    fn get_issue_args_accepts_id_or_key() {
+        let args: GetIssueArgs = serde_json::from_value(json!({ "id": "123" })).unwrap();
+        assert_eq!(args.id.as_deref(), Some("123"));
+
+        let args: GetIssueArgs = serde_json::from_value(json!({ "key": "DIS-1" })).unwrap();
+        assert_eq!(args.key.as_deref(), Some("DIS-1"));
     }
 
     #[test]
     fn get_issue_args_include_defaults_to_empty() {
-        let args: GetIssueArgs =
-            serde_json::from_value(json!({ "id": "123" })).unwrap();
+        let args: GetIssueArgs = serde_json::from_value(json!({ "id": "123" })).unwrap();
         assert!(args.include.is_empty());
     }
 

@@ -7,7 +7,9 @@ use crate::{
     mcp::{
         auth::McpIdentity,
         protocol::{JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
-        tools::{body_markdown, iso8601, map_db_error, parse_snowflake_id},
+        tools::{
+            body_markdown, iso8601, map_db_error, parse_issue_identifier_value, IssueIdentifier,
+        },
     },
     models::issue::Issue,
     schema::issues,
@@ -61,8 +63,8 @@ pub async fn read(
 ) -> Result<Value, JsonRpcError> {
     let params: ReadResourceParams = serde_json::from_value(params.clone().unwrap_or(Value::Null))
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid resources/read params"))?;
-    let id = parse_issue_uri(&params.uri)?;
-    let issue_id = parse_snowflake_id(&id, "id")?;
+    let identifier = parse_issue_uri(&params.uri)?;
+    let issue_identifier = parse_issue_identifier_value(&identifier);
 
     let mut conn = state
         .db
@@ -70,17 +72,24 @@ pub async fn read(
         .await
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
-    let issue: Issue = issues::table
-        .filter(issues::id.eq(issue_id))
+    let mut query = issues::table
         .filter(
             issues::author_id
                 .eq(identity.user_id())
                 .or(issues::assignee_id.eq(Some(identity.user_id()))),
         )
+        .into_boxed();
+
+    query = match issue_identifier {
+        IssueIdentifier::Id(id) => query.filter(issues::id.eq(id)),
+        IssueIdentifier::Key(key) => query.filter(issues::key.eq(key)),
+    };
+
+    let issue: Issue = query
         .select(Issue::as_select())
         .first(&mut conn)
         .await
-        .map_err(|error| map_db_error(error, Some(&id)))?;
+        .map_err(|error| map_db_error(error, Some(&identifier)))?;
 
     let text = text_for_issue(issue)?;
     Ok(json!({
@@ -116,9 +125,10 @@ pub(crate) fn text_for_issue(issue: Issue) -> Result<String, JsonRpcError> {
     let body = body_markdown(issue.blocks.clone())?;
 
     Ok(format!(
-        "# {}\n\n**ID:** {}\n**Status:** {}\n**Priority:** {}\n**Assignee:** {}\n**Created:** {}\n**Updated:** {}\n\n---\n\n{}",
+        "# {}\n\n**ID:** {}\n**Key:** {}\n**Status:** {}\n**Priority:** {}\n**Assignee:** {}\n**Created:** {}\n**Updated:** {}\n\n---\n\n{}",
         issue.title,
         id,
+        issue.key,
         issue.status,
         priority,
         assignee,
@@ -171,6 +181,7 @@ mod tests {
         let text = text_for_issue(issue).unwrap();
 
         assert!(text.starts_with("# Example\n\n**ID:** 123"));
+        assert!(text.contains("**Key:** DIS-1"));
         assert!(text.contains("**Status:** doing"));
         assert!(text.contains("**Priority:** 2"));
         assert!(text.contains("**Assignee:** 8"));
