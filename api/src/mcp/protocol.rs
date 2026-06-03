@@ -126,6 +126,8 @@ pub struct TextContent {
 #[derive(Debug, Serialize)]
 pub struct ToolResult {
     pub content: Vec<TextContent>,
+    #[serde(rename = "isError", skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
 }
 
 pub fn json_text_result(value: Value) -> Result<Value, JsonRpcError> {
@@ -137,8 +139,39 @@ pub fn json_text_result(value: Value) -> Result<Value, JsonRpcError> {
             content_type: "text",
             text,
         }],
+        is_error: None,
     })
     .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "failed to serialize tool result"))
+}
+
+pub fn dispatch_error_result(
+    code: &str,
+    message: impl Into<String>,
+    field: Option<&str>,
+    valid_values: Option<&[String]>,
+) -> Result<Value, JsonRpcError> {
+    let mut obj = serde_json::json!({
+        "code": code,
+        "message": message.into(),
+    });
+    if let Some(f) = field {
+        obj["field"] = serde_json::Value::String(f.to_owned());
+    }
+    if let Some(vv) = valid_values {
+        obj["valid_values"] = serde_json::Value::Array(
+            vv.iter().map(|v| serde_json::Value::String(v.clone())).collect(),
+        );
+    }
+    let text = serde_json::to_string(&obj)
+        .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "failed to serialize error"))?;
+    serde_json::to_value(ToolResult {
+        content: vec![TextContent {
+            content_type: "text",
+            text,
+        }],
+        is_error: Some(true),
+    })
+    .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "failed to serialize error"))
 }
 
 #[cfg(test)]

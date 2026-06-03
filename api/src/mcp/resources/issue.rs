@@ -7,7 +7,7 @@ use crate::{
     mcp::{
         auth::McpIdentity,
         protocol::{JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
-        tools::{body_markdown, iso8601, map_db_error, parse_snowflake_id, priority_output},
+        tools::{body_markdown, iso8601, map_db_error, parse_snowflake_id},
     },
     models::issue::Issue,
     schema::issues,
@@ -108,7 +108,7 @@ pub(crate) fn parse_issue_uri(uri: &str) -> Result<String, JsonRpcError> {
 
 pub(crate) fn text_for_issue(issue: Issue) -> Result<String, JsonRpcError> {
     let id = issue.id.to_string();
-    let priority = priority_output(issue.priority).unwrap_or_else(|| "null".to_owned());
+    let priority = issue.priority.to_string();
     let assignee = issue
         .assignee_id
         .map(|id| id.to_string())
@@ -165,6 +165,7 @@ mod tests {
             blocks: json!([{ "id": "b1", "kind": "markdown", "content": "Body" }]),
             created_at: at,
             updated_at: at,
+            state_id: None,
         };
 
         let text = text_for_issue(issue).unwrap();

@@ -310,11 +310,12 @@ pub async fn create_issue(
         project_id,
         parent_id,
         title: body.title,
-        status: body.status,
+        status: body.status.clone(),
         priority: body.priority,
         author_id: user.id,
         assignee_id,
         blocks: serde_json::to_value(body.blocks).map_err(|_| AppError::Internal)?,
+        state_id: None,
     };
 
     let created: Issue = diesel::insert_into(issues::table)
@@ -418,6 +419,8 @@ pub async fn update_issue(
             .transpose()
             .map_err(|_| AppError::Internal)?,
         parent_id: parent_change,
+        state_id: None,
+        project_id: None,
         updated_at: Some(Utc::now()),
     };
 
