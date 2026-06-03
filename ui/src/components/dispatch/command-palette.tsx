@@ -22,6 +22,8 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 
+import { useDialogHistory } from '@/hooks/use-dialog-history'
+
 import { Kbd } from './primitives'
 
 import type React from 'react'
@@ -38,6 +40,8 @@ export function CommandPalette({
   onCreateIssue,
 }: CommandPaletteProps) {
   const navigate = useNavigate()
+
+  useDialogHistory(open, () => onOpenChange(false))
 
   const run = (action: () => void) => {
     onOpenChange(false)
