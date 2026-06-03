@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star, Trash2, Plus, Pencil } from 'lucide-react'
+import { StatusCircle } from '../../components/dispatch/primitives'
 import { useRouter } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,43 @@ function filterIssues(issues: ApiIssue[], filter: FilterTab): ApiIssue[] {
   }
 }
 
+const STATUS_ORDER = ['doing', 'next', 'draft', 'todo', 'backlog', 'done', 'cancelled']
+
+function getStatusDisplayName(status: string): string {
+  const map: Record<string, string> = {
+    doing: 'Doing',
+    next: 'Next',
+    draft: 'Draft',
+    todo: 'To Do',
+    backlog: 'Backlog',
+    done: 'Done',
+    cancelled: 'Cancelled',
+  }
+  return map[status] ?? status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function groupAndSortIssues(issues: ApiIssue[]): Array<{ status: string; issues: ApiIssue[] }> {
+  const sorted = [...issues].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
+  const groups = new Map<string, ApiIssue[]>()
+  for (const issue of sorted) {
+    const status = issue.status.toLowerCase()
+    if (!groups.has(status)) groups.set(status, [])
+    groups.get(status)!.push(issue)
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => {
+      const ai = STATUS_ORDER.indexOf(a)
+      const bi = STATUS_ORDER.indexOf(b)
+      if (ai === -1 && bi === -1) return a.localeCompare(b)
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+    .map(([status, groupIssues]) => ({ status, issues: groupIssues }))
+}
+
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()
@@ -86,8 +124,17 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
   }
 
   const filteredIssues = filterIssues(issues, activeFilter)
-  const visibleIssues = filteredIssues.slice(0, visibleCount)
-  const hasMore = visibleCount < filteredIssues.length
+  const allGroups = groupAndSortIssues(filteredIssues)
+
+  // Accumulate complete groups until visibleCount is reached
+  let accumulated = 0
+  const visibleGroups: typeof allGroups = []
+  for (const group of allGroups) {
+    if (accumulated >= visibleCount) break
+    visibleGroups.push(group)
+    accumulated += group.issues.length
+  }
+  const hasMore = visibleGroups.length < allGroups.length
 
   // Reset visible count when filter changes
   useEffect(() => {
@@ -99,6 +146,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
   hasMoreRef.current = hasMore
   const filteredLengthRef = useRef(filteredIssues.length)
   filteredLengthRef.current = filteredIssues.length
+
 
   // Infinite scroll via IntersectionObserver
   const handleSentinel = useCallback(
@@ -230,29 +278,43 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
 
           {/* ── Issue list ────────────────────────────────────────────────── */}
           <div>
-            {visibleIssues.length === 0 ? (
+            {filteredIssues.length === 0 ? (
               <div className="py-16 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
                 No issues in this filter.
               </div>
             ) : (
               <div>
-                {visibleIssues.map((issue) => (
-                  <div
-                    key={issue.id}
-                    className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
-                  >
-                    <CompactIssueRow
-                      id={issue.id}
-                      projectId={issue.project_id}
-                      issueKey={issue.key}
-                      status={issue.status}
-                      priority={issue.priority}
-                      title={issue.title}
-                      labels={issue.labels}
-                      date={issue.updated_at}
-                      selected={issue.id === selectedIssueId}
-                      onSelect={() => selectIssue(issue.id)}
-                    />
+                {visibleGroups.map((group) => (
+                  <div key={group.status}>
+                    {/* Sticky status group header */}
+                    <div className="sticky top-[29px] z-[9] flex items-center gap-2 border-b border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-base)] px-[18px] py-[7px] md:top-[23px] md:px-10">
+                      <StatusCircle status={group.status} />
+                      <span className="text-[12.5px] font-semibold text-[var(--dispatch-text-secondary)]">
+                        {getStatusDisplayName(group.status)}
+                      </span>
+                      <span className="ml-1 text-[11.5px] font-medium text-[var(--dispatch-text-quaternary)]">
+                        {group.issues.length}
+                      </span>
+                    </div>
+                    {group.issues.map((issue) => (
+                      <div
+                        key={issue.id}
+                        className="border-b border-[var(--dispatch-border-soft)] last:border-b-0"
+                      >
+                        <CompactIssueRow
+                          id={issue.id}
+                          projectId={issue.project_id}
+                          issueKey={issue.key}
+                          status={issue.status}
+                          priority={issue.priority}
+                          title={issue.title}
+                          labels={issue.labels}
+                          date={issue.updated_at}
+                          selected={issue.id === selectedIssueId}
+                          onSelect={() => selectIssue(issue.id)}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -269,7 +331,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
                 <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--dispatch-text-quaternary)] [animation-delay:300ms]" />
               </div>
             ) : filteredIssues.length > 0 ? (
-              <div className="py-6 text-center text-[12px] text-[var(--dispatch-text-quaternary)]">
+              <div className="py-5 text-center text-[12px] text-[var(--dispatch-text-quaternary)]">
                 {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
               </div>
             ) : null}
