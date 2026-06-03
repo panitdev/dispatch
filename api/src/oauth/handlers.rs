@@ -102,6 +102,18 @@ pub async fn oauth_login(
 
     if login_req.skip {
         let subject = login_req.subject.ok_or(StatusCode::BAD_GATEWAY)?;
+        if let Ok(session) = kratos_whoami(&state, headers.get(header::COOKIE).cloned()).await {
+            if session.identity.id.to_string() == subject {
+                ensure_local_user(&state, &session).await?;
+            } else {
+                tracing::info!(
+                    hydra_subject = %subject,
+                    kratos_id = %session.identity.id,
+                    "skipped oauth login subject did not match kratos session"
+                );
+            }
+        }
+
         let redirect = hydra::accept_login(&state, &challenge, &subject)
             .await
             .map_err(|err| err.as_gateway_status())?;

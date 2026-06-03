@@ -109,15 +109,23 @@ async fn verify_api_key(state: &AppState, raw_key: &str) -> Result<McpIdentity, 
 }
 
 async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity, McpError> {
-    let introspection = hydra::introspect(state, token)
-        .await
-        .map_err(|_| McpError::Internal)?;
+    let introspection = hydra::introspect(state, token).await.map_err(|err| {
+        tracing::debug!(?err, "hydra token introspection failed");
+        McpError::Internal
+    })?;
     if !introspection.active {
+        tracing::info!("mcp oauth rejected: inactive token");
         return Err(McpError::Unauthorized);
     }
 
-    let subject = introspection.sub.ok_or(McpError::Unauthorized)?;
-    let kratos_id = Uuid::parse_str(&subject).map_err(|_| McpError::Unauthorized)?;
+    let subject = introspection.sub.ok_or_else(|| {
+        tracing::info!("mcp oauth rejected: missing subject");
+        McpError::Unauthorized
+    })?;
+    let kratos_id = Uuid::parse_str(&subject).map_err(|_| {
+        tracing::info!(subject = %subject, "mcp oauth rejected: subject is not a uuid");
+        McpError::Unauthorized
+    })?;
     let _expires_at = introspection.exp;
     let scopes = introspection
         .scope
@@ -133,7 +141,14 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
         .await
         .optional()
         .map_err(|_| McpError::Internal)?
-        .ok_or(McpError::Unauthorized)?;
+        .ok_or_else(|| {
+            tracing::info!(
+                kratos_id = %kratos_id,
+                scopes = ?scopes,
+                "mcp oauth rejected: no local dispatch user for token subject"
+            );
+            McpError::Unauthorized
+        })?;
 
     Ok(McpIdentity::OAuth {
         user_id,
