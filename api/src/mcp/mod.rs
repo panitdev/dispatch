@@ -145,17 +145,41 @@ async fn handle_tools_call(
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid tools/call params"))?;
 
     match params.name.as_str() {
-        "dispatch_get_issue" => {
+        "search_issues" => {
+            require_scope(identity, "dispatch:read")?;
+            tools::search_issues::call(identity, state, params.arguments).await
+        }
+        "get_issue" => {
             require_scope(identity, "dispatch:read")?;
             tools::get_issue::call(identity, state, params.arguments).await
         }
-        "dispatch_list_issues" => {
+        "get_workspace_metadata" => {
             require_scope(identity, "dispatch:read")?;
-            tools::list_issues::call(identity, state, params.arguments).await
+            tools::get_workspace_metadata::call(identity, state, params.arguments).await
         }
-        "dispatch_update_issue" => {
+        "get_current_context" => {
+            require_scope(identity, "dispatch:read")?;
+            tools::get_current_context::call(identity, state, params.arguments).await
+        }
+        "create_issue" => {
+            require_scope(identity, "dispatch:write")?;
+            tools::create_issue::call(identity, state, params.arguments).await
+        }
+        "update_issue" => {
             require_scope(identity, "dispatch:write")?;
             tools::update_issue::call(identity, state, params.arguments).await
+        }
+        "comment_on_issue" => {
+            require_scope(identity, "dispatch:write")?;
+            tools::comment_on_issue::call(identity, state, params.arguments).await
+        }
+        "relate_issues" => {
+            require_scope(identity, "dispatch:write")?;
+            tools::relate_issues::call(identity, state, params.arguments).await
+        }
+        "bulk_update_issues" => {
+            require_scope(identity, "dispatch:write")?;
+            tools::bulk_update_issues::call(identity, state, params.arguments).await
         }
         _ => Err(JsonRpcError::new(INVALID_PARAMS, "unknown tool")),
     }

@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::schema::{issue_labels, issue_relations, issues};
+use crate::schema::{issue_comments, issue_history, issue_label_refs, issue_labels, issue_relations, issues};
 
 pub use dispatch_issue_body_markdown::IssueBodyBlock;
 
@@ -23,6 +23,7 @@ pub struct Issue {
     pub blocks: Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub state_id: Option<i64>,
 }
 
 #[derive(Insertable)]
@@ -38,6 +39,7 @@ pub struct NewIssue {
     pub author_id: i64,
     pub assignee_id: Option<i64>,
     pub blocks: Value,
+    pub state_id: Option<i64>,
 }
 
 #[derive(AsChangeset, Default)]
@@ -49,7 +51,67 @@ pub struct IssueChangeset {
     pub assignee_id: Option<Option<i64>>,
     pub blocks: Option<Value>,
     pub parent_id: Option<Option<i64>>,
+    pub state_id: Option<i64>,
+    pub project_id: Option<i64>,
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+// ---- Comment model ----
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = issue_comments)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IssueComment {
+    pub id: i64,
+    pub issue_id: i64,
+    pub author_id: i64,
+    pub body: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = issue_comments)]
+pub struct NewIssueComment {
+    pub id: i64,
+    pub issue_id: i64,
+    pub author_id: i64,
+    pub body: String,
+}
+
+// ---- History model ----
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = issue_history)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct IssueHistoryEntry {
+    pub id: i64,
+    pub issue_id: i64,
+    pub actor_id: i64,
+    pub field: String,
+    pub from_value: Option<String>,
+    pub to_value: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = issue_history)]
+pub struct NewIssueHistoryEntry {
+    pub id: i64,
+    pub issue_id: i64,
+    pub actor_id: i64,
+    pub field: String,
+    pub from_value: Option<String>,
+    pub to_value: Option<String>,
+}
+
+// ---- Label ref model ----
+
+#[derive(Debug, Queryable, Selectable, Insertable)]
+#[diesel(table_name = issue_label_refs)]
+pub struct IssueLabelRef {
+    pub issue_id: i64,
+    pub label_id: i64,
 }
 
 #[derive(Debug, Queryable, Selectable, Insertable)]

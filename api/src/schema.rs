@@ -1,4 +1,4 @@
-// @generated — keep in sync with migrations/00000000000000_initial/up.sql
+// @generated — keep in sync with migrations
 
 diesel::table! {
     dispatch_api_keys (id) {
@@ -21,6 +21,37 @@ diesel::table! {
         username   -> Varchar,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        email      -> Nullable<Varchar>,
+    }
+}
+
+diesel::table! {
+    teams (id) {
+        id         -> Int8,
+        name       -> Varchar,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    states (id) {
+        id         -> Int8,
+        team_id    -> Int8,
+        name       -> Varchar,
+        group_name -> Varchar,
+        color      -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    labels (id) {
+        id         -> Int8,
+        team_id    -> Int8,
+        name       -> Varchar,
+        color      -> Varchar,
+        created_at -> Timestamptz,
     }
 }
 
@@ -34,6 +65,7 @@ diesel::table! {
         issue_sequence -> Int4,
         created_at     -> Timestamptz,
         updated_at     -> Timestamptz,
+        team_id        -> Nullable<Int8>,
     }
 }
 
@@ -51,6 +83,7 @@ diesel::table! {
         blocks      -> Jsonb,
         created_at  -> Timestamptz,
         updated_at  -> Timestamptz,
+        state_id    -> Nullable<Int8>,
     }
 }
 
@@ -62,6 +95,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    issue_label_refs (issue_id, label_id) {
+        issue_id -> Int8,
+        label_id -> Int8,
+    }
+}
+
+diesel::table! {
     issue_relations (issue_id, related_issue_id, relation_type) {
         issue_id         -> Int8,
         related_issue_id -> Int8,
@@ -69,15 +109,63 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    issue_comments (id) {
+        id         -> Int8,
+        issue_id   -> Int8,
+        author_id  -> Int8,
+        body       -> Text,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    issue_history (id) {
+        id          -> Int8,
+        issue_id    -> Int8,
+        actor_id    -> Int8,
+        field       -> Varchar,
+        from_value  -> Nullable<Text>,
+        to_value    -> Nullable<Text>,
+        created_at  -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    issue_idempotency_keys (key) {
+        key          -> Text,
+        issue_id     -> Int8,
+        payload_hash -> Binary,
+        created_at   -> Timestamptz,
+    }
+}
+
 diesel::joinable!(issues -> projects (project_id));
+diesel::joinable!(issues -> states (state_id));
 diesel::joinable!(issue_labels -> issues (issue_id));
+diesel::joinable!(issue_label_refs -> issues (issue_id));
+diesel::joinable!(issue_label_refs -> labels (label_id));
+diesel::joinable!(issue_comments -> issues (issue_id));
+diesel::joinable!(issue_comments -> users (author_id));
+diesel::joinable!(issue_history -> issues (issue_id));
 diesel::joinable!(dispatch_api_keys -> users (user_id));
+diesel::joinable!(states -> teams (team_id));
+diesel::joinable!(labels -> teams (team_id));
+diesel::joinable!(projects -> teams (team_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     dispatch_api_keys,
     users,
+    teams,
+    states,
+    labels,
     projects,
     issues,
     issue_labels,
+    issue_label_refs,
     issue_relations,
+    issue_comments,
+    issue_history,
+    issue_idempotency_keys,
 );
