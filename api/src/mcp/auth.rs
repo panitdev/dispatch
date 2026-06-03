@@ -52,12 +52,22 @@ where
     type Rejection = McpError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let raw = parts
+        let auth = parts
             .headers
             .get(header::AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|s| s.strip_prefix("Bearer "))
-            .ok_or(McpError::Unauthorized)?;
+            .and_then(|v| v.to_str().ok());
+        let raw = match auth.and_then(|s| s.strip_prefix("Bearer ")) {
+            Some(raw) => raw,
+            None => {
+                tracing::info!(
+                    method = %parts.method,
+                    uri = %parts.uri,
+                    has_authorization = auth.is_some(),
+                    "mcp auth rejected: missing bearer token"
+                );
+                return Err(McpError::Unauthorized);
+            }
+        };
 
         let state = AppState::from_ref(state);
         if raw.starts_with("dsp_") {
