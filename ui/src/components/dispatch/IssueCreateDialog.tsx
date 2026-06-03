@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   ChevronRight,
   Maximize2,
@@ -20,6 +21,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover
 import { IssueEditor } from './IssueEditor'
 import { StatusCircle } from './primitives'
 import { createIssue, getDisplayErrorMessage, listProjectLabels, listProjects } from '#/lib/api'
+import { detachTopDialog } from '#/lib/dialog-history'
+import {
+  clearIssueDraft,
+  loadIssueDraft,
+  saveIssueDraft,
+} from '#/lib/issue-draft'
 import { toast } from 'sonner'
 
 import type { IssueBodyBlock } from './IssueEditor'
@@ -75,20 +82,51 @@ export function IssueCreateDialog({
   const [status, setStatus] = useState('draft')
   const [labels, setLabels] = useState<string[]>([])
   const [availableLabels, setAvailableLabels] = useState<string[]>([])
+  const [editorKey, setEditorKey] = useState(0)
 
   const titleRef = useRef<HTMLInputElement>(null)
+  const draftLoadedRef = useRef(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      draftLoadedRef.current = false
+      return
+    }
+
+    // Restore a persisted draft once per open (survives a same-tab refresh).
+    let restoredProjectId = ''
+    if (!draftLoadedRef.current) {
+      draftLoadedRef.current = true
+      const draft = loadIssueDraft()
+      if (draft) {
+        setTitle(draft.title)
+        setStatus(draft.status)
+        setLabels(draft.labels)
+        setBlocks(draft.blocks)
+        setEditorKey((k) => k + 1)
+        if (draft.projectId) {
+          restoredProjectId = draft.projectId
+          setProjectId(draft.projectId)
+        }
+      }
+    }
+
     listProjects()
       .then((tree) => {
         setProjects(tree)
-        if (!projectId && tree.length > 0) {
+        if (!restoredProjectId && !projectId && tree.length > 0) {
           setProjectId(tree[0].id)
         }
       })
       .catch(() => { })
   }, [open])
+
+  // Persist the in-progress draft while the form is open.
+  useEffect(() => {
+    if (!open) return
+    saveIssueDraft({ title, projectId, status, labels, blocks })
+  }, [open, title, projectId, status, labels, blocks])
 
   useEffect(() => {
     if (open) {
@@ -133,19 +171,28 @@ export function IssueCreateDialog({
     setError(null)
 
     try {
-      await createIssue({
+      const created = await createIssue({
         project_id: projectId,
         title: title.trim(),
         status,
         labels,
         blocks,
       })
+      clearIssueDraft()
       setTitle('')
       setBlocks([])
       setStatus('draft')
       setLabels([])
       onCreated?.()
+      // Replace the dialog's dummy history entry (mobile) with the new issue so
+      // back returns to the list; on desktop there is no entry, so push instead.
+      const replace = detachTopDialog()
       onOpenChange(false)
+      void navigate({
+        to: '/issues/$issueId',
+        params: { issueId: created.id },
+        replace,
+      })
       toast.success('Issue created')
     } catch (err) {
       setError(getDisplayErrorMessage(err, 'Failed to create issue.'))
@@ -222,7 +269,8 @@ export function IssueCreateDialog({
             {/* Editor */}
             <div className="px-5 pb-4">
               <IssueEditor
-                initialBlocks={[]}
+                key={editorKey}
+                initialBlocks={blocks}
                 placeholder="Write a description..."
                 onChange={setBlocks}
               />

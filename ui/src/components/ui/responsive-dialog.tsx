@@ -6,6 +6,7 @@ import { Drawer } from "vaul"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useDialogHistory } from "@/hooks/use-dialog-history"
 
 // ─── Mobile detection ─────────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ type DialogProps = React.ComponentProps<typeof DialogPrimitive.Root> & {
 function Dialog({
   children,
   modal,
+  open,
+  onOpenChange,
   shouldScaleBackground = false,
   dismissible = true,
   snapPoints,
@@ -53,11 +56,17 @@ function Dialog({
 }: DialogProps) {
   const isMobile = useIsMobile()
 
+  // Back the dialog with a dummy mobile history entry so the browser back button
+  // closes it instead of leaving the app. No-op on desktop / when uncontrolled.
+  useDialogHistory(!!open, () => onOpenChange?.(false))
+
   return (
     <ResponsiveDialogContext.Provider value={{ isMobile }}>
       {isMobile ? (
         <Drawer.Root
           {...props}
+          open={open}
+          onOpenChange={onOpenChange}
           shouldScaleBackground={shouldScaleBackground}
           dismissible={dismissible}
           snapPoints={snapPoints}
@@ -66,7 +75,13 @@ function Dialog({
           {children}
         </Drawer.Root>
       ) : (
-        <DialogPrimitive.Root data-slot="dialog" {...props} modal={modal}>
+        <DialogPrimitive.Root
+          data-slot="dialog"
+          {...props}
+          open={open}
+          onOpenChange={onOpenChange}
+          modal={modal}
+        >
           {children}
         </DialogPrimitive.Root>
       )}

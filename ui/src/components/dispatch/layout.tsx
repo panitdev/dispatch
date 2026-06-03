@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
+import { useDialogHistory } from '@/hooks/use-dialog-history'
+
 function useIsDesktop(breakpoint = 1024): boolean {
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(`(min-width: ${breakpoint}px)`).matches
@@ -65,6 +67,10 @@ function DispatchLayoutContent({
   const showDetailRail =
     active !== 'Settings' && active !== 'Issue' && selectedIssueId !== null
   const drawerOpen = showDetailRail && !isDesktop
+
+  // Mobile back button closes these overlays instead of leaving the app.
+  useDialogHistory(drawerOpen, closeIssue)
+  useDialogHistory(mobileSidebarOpen, () => setMobileSidebarOpen(false))
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
