@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star, Trash2 } from 'lucide-react'
+import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star, Trash2, Plus, Pencil } from 'lucide-react'
 import { useRouter } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
@@ -19,11 +19,12 @@ import { useIssueSelection } from '../../components/dispatch/issue-selection-con
 import {
   updateProject,
   deleteProject,
+  listProjectLabels,
   getDisplayErrorMessage,
 } from '@/lib/api'
 import { toast } from 'sonner'
 
-import type { ApiIssue, ApiProject } from '@/lib/api'
+import type { ApiIssue, ApiIssueLabel, ApiProject } from '@/lib/api'
 import type { ProjectPageData } from '@/lib/server-data'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -374,6 +375,9 @@ function ProjectSettingsTab({ project }: { project: ApiProject }) {
         </form>
       </section>
 
+      {/* ── Labels ──────────────────────────────────────────────────────── */}
+      <LabelsSection projectId={project.id} />
+
       {/* ── Danger zone ─────────────────────────────────────────────────── */}
       <section className="mt-12">
         <h2 className="mb-1 text-[15px] font-semibold tracking-[-0.01em] text-[var(--dispatch-text-primary)]">
@@ -412,6 +416,206 @@ function ProjectSettingsTab({ project }: { project: ApiProject }) {
         onOpenChange={setDeleteOpen}
       />
     </div>
+  )
+}
+
+// ─── Labels section ───────────────────────────────────────────────────────────
+
+const LABEL_COLORS = [
+  '#E5534B',
+  '#F78336',
+  '#3FB950',
+  '#2188FF',
+  '#8957E5',
+  '#DB61A2',
+  '#39D0D3',
+  '#8B949E',
+]
+
+function LabelsSection({ projectId }: { projectId: string }) {
+  const [labels, setLabels] = useState<ApiIssueLabel[]>([])
+  const [isAdding, setIsAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formName, setFormName] = useState('')
+  const [formColor, setFormColor] = useState(LABEL_COLORS[0])
+
+  useEffect(() => {
+    listProjectLabels(projectId)
+      .then((data) => setLabels(data))
+      .catch(() => {})
+  }, [projectId])
+
+  function openAddForm() {
+    setEditingId(null)
+    setFormName('')
+    setFormColor(LABEL_COLORS[0])
+    setIsAdding(true)
+  }
+
+  function openEditForm(label: ApiIssueLabel) {
+    setIsAdding(false)
+    setEditingId(label.id)
+    setFormName(label.name)
+    setFormColor(LABEL_COLORS.includes(label.color) ? label.color : LABEL_COLORS[0])
+  }
+
+  function cancelForm() {
+    setIsAdding(false)
+    setEditingId(null)
+    setFormName('')
+    setFormColor(LABEL_COLORS[0])
+  }
+
+  function handleSave() {
+    const trimmed = formName.trim()
+    if (!trimmed) return
+    if (isAdding) {
+      setLabels((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), project_id: projectId, name: trimmed, color: formColor },
+      ])
+      setIsAdding(false)
+    } else if (editingId) {
+      setLabels((prev) =>
+        prev.map((l) => (l.id === editingId ? { ...l, name: trimmed, color: formColor } : l)),
+      )
+      setEditingId(null)
+    }
+    setFormName('')
+    setFormColor(LABEL_COLORS[0])
+  }
+
+  function handleDelete(id: string) {
+    setLabels((prev) => prev.filter((l) => l.id !== id))
+  }
+
+  const showForm = isAdding || editingId !== null
+
+  return (
+    <section className="mt-10">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--dispatch-text-primary)]">
+          Labels
+        </h2>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1 border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] text-[var(--dispatch-text-secondary)] hover:border-[var(--dispatch-border-strong)] hover:bg-[var(--dispatch-bg-elevated)] hover:text-[var(--dispatch-text-primary)]"
+          onClick={openAddForm}
+        >
+          <Plus size={12} />
+          New label
+        </Button>
+      </div>
+      <p className="mb-4 text-[13px] text-[var(--dispatch-text-tertiary)]">
+        Manage labels used across this project's issues.
+      </p>
+
+      <div className="overflow-hidden rounded-[var(--dispatch-r-lg)] border border-[var(--dispatch-border-soft)]">
+        {showForm && (
+          <div className="space-y-3 border-b border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-4 py-3.5">
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-[var(--dispatch-text-secondary)]">
+                Name
+              </label>
+              <input
+                type="text"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleSave() }
+                  if (e.key === 'Escape') cancelForm()
+                }}
+                placeholder="feature"
+                autoFocus
+                className="w-full rounded-[var(--dispatch-r-md)] border border-[var(--dispatch-border)] bg-[var(--dispatch-bg-elevated)] px-3 py-2 text-[13px] text-[var(--dispatch-text-primary)] placeholder:text-[var(--dispatch-text-quaternary)] outline-none focus:border-[var(--dispatch-cobalt)]"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-[12px] font-medium text-[var(--dispatch-text-secondary)]">
+                Color
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                {LABEL_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setFormColor(color)}
+                    className={`h-7 w-7 shrink-0 rounded-full transition-transform hover:scale-110 ${formColor === color ? 'scale-110 ring-2 ring-[var(--dispatch-cobalt)] ring-offset-2 ring-offset-[var(--dispatch-bg-surface)]' : ''}`}
+                    style={{ background: color }}
+                    aria-label={color}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" onClick={handleSave} disabled={!formName.trim()}>
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={cancelForm}
+                className="text-[var(--dispatch-text-secondary)] hover:text-[var(--dispatch-text-primary)]"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="max-h-[280px] overflow-y-auto">
+          {labels.length === 0 ? (
+            <div className="py-8 text-center text-[13px] text-[var(--dispatch-text-quaternary)]">
+              No labels yet.
+            </div>
+          ) : (
+            labels.map((label) => (
+              <div
+                key={label.id}
+                className="group flex items-center gap-3 border-b border-[var(--dispatch-border-soft)] px-4 py-2.5 transition-colors last:border-b-0 hover:bg-[var(--dispatch-bg-hover)]"
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: label.color }}
+                />
+                <span className="flex-1 text-[13px] font-medium text-[var(--dispatch-text-primary)]">
+                  {label.name}
+                </span>
+                <span
+                  className="inline-flex items-center rounded-[4px] border px-[6px] py-[2px] text-[11px] font-medium leading-[1.4]"
+                  style={{
+                    background: `color-mix(in oklab, ${label.color} 12%, transparent)`,
+                    borderColor: `color-mix(in oklab, ${label.color} 30%, transparent)`,
+                    color: label.color,
+                  }}
+                >
+                  {label.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openEditForm(label)}
+                  className="text-[var(--dispatch-text-quaternary)] transition-colors hover:text-[var(--dispatch-text-secondary)]"
+                  aria-label="Edit label"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(label.id)}
+                  className="text-[var(--dispatch-text-quaternary)] transition-colors hover:text-[var(--dispatch-rust)]"
+                  aria-label="Delete label"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 
