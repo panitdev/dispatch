@@ -39,6 +39,7 @@ async fn handle_mcp(
     let body: JsonRpcRequest = match serde_json::from_slice(&body) {
         Ok(body) => body,
         Err(_) => {
+            tracing::warn!("mcp request rejected: invalid json-rpc payload");
             return json_rpc_response(
                 sse,
                 JsonRpcResponse {
@@ -50,6 +51,13 @@ async fn handle_mcp(
             );
         }
     };
+    tracing::info!(
+        method = %body.method,
+        has_id = body.id.is_some(),
+        sse,
+        user_id = identity.user_id(),
+        "handling mcp json-rpc request"
+    );
 
     if body.id.is_none() {
         handle_notification(&body.method, &body.params).await;

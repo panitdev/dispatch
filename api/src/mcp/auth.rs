@@ -98,6 +98,12 @@ async fn verify_api_key(state: &AppState, raw_key: &str) -> Result<McpIdentity, 
 
     drop(conn);
 
+    tracing::info!(
+        user_id = row.0,
+        agent_id = ?row.1,
+        "mcp api key accepted"
+    );
+
     let update_pool = state.db.clone();
     tokio::spawn(async move {
         if let Ok(mut conn) = update_pool.get().await {
@@ -159,6 +165,13 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
             );
             unauthorized(state)
         })?;
+
+    tracing::info!(
+        user_id,
+        subject = %subject,
+        scopes = ?scopes,
+        "mcp oauth token accepted"
+    );
 
     Ok(McpIdentity::OAuth {
         user_id,

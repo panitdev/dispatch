@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use crate::{
     auth::kratos::KratosIdentity,
-    error::{AppError, ApiResult},
+    error::{ApiResult, AppError},
     models::project::{
         build_project_tree, CreateProjectRequest, NewProject, Project, ProjectChangeset,
         ProjectResponse, UpdateProjectRequest,
@@ -46,7 +46,10 @@ pub async fn create_project(
     let parent_id = body
         .parent_id
         .as_deref()
-        .map(|s| s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid parent_id".into())))
+        .map(|s| {
+            s.parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid parent_id".into()))
+        })
         .transpose()?;
 
     let new_project = NewProject {
@@ -63,7 +66,10 @@ pub async fn create_project(
         .get_result(&mut conn)
         .await?;
 
-    Ok((StatusCode::CREATED, Json(ProjectResponse::from_flat(created))))
+    Ok((
+        StatusCode::CREATED,
+        Json(ProjectResponse::from_flat(created)),
+    ))
 }
 
 pub async fn get_project(
@@ -71,7 +77,9 @@ pub async fn get_project(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<Json<ProjectResponse>> {
-    let project_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
     let mut conn = state.db.get().await?;
 
     // Load the root project + all projects that descend from it (one level; recursive later)
@@ -81,8 +89,7 @@ pub async fn get_project(
         .await?;
 
     let tree = build_project_tree(all);
-    let found = find_in_tree(&tree, &project_id.to_string())
-        .ok_or(AppError::NotFound)?;
+    let found = find_in_tree(&tree, &project_id.to_string()).ok_or(AppError::NotFound)?;
 
     Ok(Json(found))
 }
@@ -105,11 +112,15 @@ pub async fn update_project(
     Path(id): Path<String>,
     Json(body): Json<UpdateProjectRequest>,
 ) -> ApiResult<Json<ProjectResponse>> {
-    let project_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
 
     let parent_id_change = match body.parent_id {
         Some(Some(ref s)) => {
-            let parsed = s.parse::<i64>().map_err(|_| AppError::BadRequest("invalid parent_id".into()))?;
+            let parsed = s
+                .parse::<i64>()
+                .map_err(|_| AppError::BadRequest("invalid parent_id".into()))?;
             Some(Some(parsed))
         }
         Some(None) => Some(None),
@@ -136,7 +147,9 @@ pub async fn delete_project(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> ApiResult<StatusCode> {
-    let project_id: i64 = id.parse().map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
     let mut conn = state.db.get().await?;
 
     let deleted = diesel::delete(projects::table.find(project_id))

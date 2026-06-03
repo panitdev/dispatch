@@ -90,16 +90,19 @@ pub fn build_project_tree(projects: Vec<Project>) -> Vec<ProjectResponse> {
     let mut responses: HashMap<i64, ProjectResponse> = projects
         .iter()
         .map(|p| {
-            (p.id, ProjectResponse {
-                id: p.id.to_string(),
-                key: p.key.clone(),
-                name: p.name.clone(),
-                color: p.color.clone(),
-                parent_id: p.parent_id.map(|id| id.to_string()),
-                sub_projects: vec![],
-                created_at: p.created_at.to_rfc3339(),
-                updated_at: p.updated_at.to_rfc3339(),
-            })
+            (
+                p.id,
+                ProjectResponse {
+                    id: p.id.to_string(),
+                    key: p.key.clone(),
+                    name: p.name.clone(),
+                    color: p.color.clone(),
+                    parent_id: p.parent_id.map(|id| id.to_string()),
+                    sub_projects: vec![],
+                    created_at: p.created_at.to_rfc3339(),
+                    updated_at: p.updated_at.to_rfc3339(),
+                },
+            )
         })
         .collect();
 
@@ -120,5 +123,8 @@ pub fn build_project_tree(projects: Vec<Project>) -> Vec<ProjectResponse> {
         }
     }
 
-    roots.into_iter().filter_map(|id| responses.remove(&id)).collect()
+    roots
+        .into_iter()
+        .filter_map(|id| responses.remove(&id))
+        .collect()
 }

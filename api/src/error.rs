@@ -46,7 +46,10 @@ impl IntoResponse for AppError {
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, "database error".into()),
                 }
             }
-            AppError::Pool(_) => (StatusCode::SERVICE_UNAVAILABLE, "service unavailable".into()),
+            AppError::Pool(_) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "service unavailable".into(),
+            ),
             AppError::Http(_) => (StatusCode::BAD_GATEWAY, "upstream error".into()),
             AppError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal error".into()),
         };

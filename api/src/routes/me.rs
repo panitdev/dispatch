@@ -1,10 +1,7 @@
 use axum::{extract::State, Json};
 
 use crate::{
-    auth::kratos::KratosIdentity,
-    error::ApiResult,
-    models::user::UserResponse,
-    state::AppState,
+    auth::kratos::KratosIdentity, error::ApiResult, models::user::UserResponse, state::AppState,
 };
 
 pub async fn get_me(

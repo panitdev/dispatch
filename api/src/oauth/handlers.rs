@@ -58,23 +58,35 @@ struct KratosTraits {
 pub async fn oauth_protected_resource_metadata(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
-    let resource = state.config.dispatch_public_url.trim_end_matches('/').to_owned();
+    let resource = state
+        .config
+        .dispatch_public_url
+        .trim_end_matches('/')
+        .to_owned();
     Json(protected_resource_metadata(&state, resource))
 }
 
 pub async fn oauth_protected_resource_metadata_for_mcp(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
-    let resource = format!("{}/mcp", state.config.dispatch_public_url.trim_end_matches('/'));
+    let resource = format!(
+        "{}/mcp",
+        state.config.dispatch_public_url.trim_end_matches('/')
+    );
     Json(protected_resource_metadata(&state, resource))
 }
 
 fn protected_resource_metadata(state: &AppState, resource: String) -> serde_json::Value {
     let authorization_server = state
         .config
-        .dispatch_public_url
+        .hydra_public_url
         .trim_end_matches('/')
         .to_owned();
+    tracing::info!(
+        resource = %resource,
+        authorization_server = %authorization_server,
+        "serving oauth protected resource metadata"
+    );
     serde_json::json!({
         "resource": resource,
         "authorization_servers": [authorization_server],
@@ -86,6 +98,11 @@ fn protected_resource_metadata(state: &AppState, resource: String) -> serde_json
 pub async fn oauth_metadata(State(state): State<AppState>) -> Json<serde_json::Value> {
     let issuer = state.config.dispatch_public_url.trim_end_matches('/');
     let hydra = state.config.hydra_public_url.trim_end_matches('/');
+    tracing::info!(
+        issuer = %issuer,
+        hydra = %hydra,
+        "serving dispatch oauth authorization metadata"
+    );
     Json(serde_json::json!({
         "issuer": issuer,
         "authorization_endpoint": format!("{hydra}/oauth2/auth"),
@@ -108,6 +125,10 @@ pub async fn oauth_token_proxy(
         "{}/oauth2/token",
         state.config.hydra_public_url.trim_end_matches('/')
     );
+    tracing::info!(
+        hydra_token_endpoint = %url,
+        "proxying oauth token request to hydra"
+    );
     let mut req = state.http.post(url).body(body.to_vec());
 
     for name in [header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT] {
@@ -116,14 +137,24 @@ pub async fn oauth_token_proxy(
         }
     }
 
-    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let resp = req.send().await.map_err(|err| {
+        tracing::warn!(error = %err, "oauth token proxy request to hydra failed");
+        StatusCode::BAD_GATEWAY
+    })?;
     let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    tracing::info!(
+        status = status.as_u16(),
+        "oauth token proxy received hydra response"
+    );
     let content_type = resp
         .headers()
         .get(header::CONTENT_TYPE)
         .cloned()
         .unwrap_or_else(|| "application/json".parse().expect("valid content-type"));
-    let body = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let body = resp.bytes().await.map_err(|err| {
+        tracing::warn!(error = %err, "oauth token proxy failed to read hydra response body");
+        StatusCode::BAD_GATEWAY
+    })?;
 
     Ok((status, [(header::CONTENT_TYPE, content_type)], body).into_response())
 }
@@ -228,10 +259,13 @@ pub async fn oauth_consent_submit(
 
     match body.action.as_str() {
         "accept" => {
-            let redirect =
-                hydra::accept_consent(&state, &body.consent_challenge, &consent_req.requested_scope)
-                    .await
-                    .map_err(|err| err.as_gateway_status())?;
+            let redirect = hydra::accept_consent(
+                &state,
+                &body.consent_challenge,
+                &consent_req.requested_scope,
+            )
+            .await
+            .map_err(|err| err.as_gateway_status())?;
             Ok(Redirect::to(&redirect.redirect_to))
         }
         "reject" => {

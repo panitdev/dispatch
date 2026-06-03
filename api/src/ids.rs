@@ -52,7 +52,11 @@ impl IdGen {
     /// `machine_id` and `node_id` each occupy 5 bits of the 10-bit node field.
     pub fn new(machine_id: i32, node_id: i32) -> Self {
         let node = ((machine_id as i64 & 0x1F) << 5) | (node_id as i64 & 0x1F);
-        Self(Arc::new(Mutex::new(Inner { node_id: node, sequence: 0, last_ms: 0 })))
+        Self(Arc::new(Mutex::new(Inner {
+            node_id: node,
+            sequence: 0,
+            last_ms: 0,
+        })))
     }
 
     pub fn next(&self) -> i64 {
