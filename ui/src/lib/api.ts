@@ -30,6 +30,13 @@ export type ApiProject = {
   updated_at: string
 }
 
+export type ApiIssueLabel = {
+  id: string
+  project_id: string
+  name: string
+  color: string
+}
+
 export type ApiIssue = {
   id: string
   key: string
@@ -258,6 +265,10 @@ export function listProjectIssues(
 ) {
   const params = status ? `?status=${encodeURIComponent(status)}` : ''
   return apiFetch<ApiIssue[]>(`/api/v1/projects/${projectId}/issues${params}`, init)
+}
+
+export function listProjectLabels(projectId: string, init?: RequestInit) {
+  return apiFetch<ApiIssueLabel[]>(`/api/v1/projects/${projectId}/labels`, init)
 }
 
 export function getIssue(issueId: string, init?: RequestInit) {

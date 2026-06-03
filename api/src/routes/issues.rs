@@ -14,21 +14,25 @@ use crate::{
     auth::kratos::KratosIdentity,
     error::{ApiResult, AppError},
     models::issue::{
-        validate_labels, validate_priority, validate_status, CreateIssueRequest, Issue,
-        IssueBodyBlock, IssueChangeset, IssueLabel, IssueRelation, IssueResponse, ListIssuesQuery,
-        NewIssue, UpdateIssueRequest,
+        validate_priority, validate_status, CreateIssueRequest, Issue, IssueBodyBlock,
+        IssueChangeset, IssueLabelRef, IssueRelation, IssueResponse, ListIssuesQuery, NewIssue,
+        UpdateIssueRequest,
     },
+    models::label::Label,
     models::project::Project,
-    schema::{issue_labels, issue_relations, issues, projects},
+    schema::{issue_label_refs, issue_relations, issues, labels, projects},
     state::AppState,
 };
 
 async fn fetch_issue_extras(
     conn: &mut diesel_async::AsyncPgConnection,
     issue_id: i64,
-) -> Result<(Vec<IssueLabel>, Vec<IssueRelation>), crate::error::AppError> {
-    let labels: Vec<IssueLabel> = issue_labels::table
-        .filter(issue_labels::issue_id.eq(issue_id))
+) -> Result<(Vec<Label>, Vec<IssueRelation>), crate::error::AppError> {
+    let labels: Vec<Label> = issue_label_refs::table
+        .inner_join(labels::table)
+        .filter(issue_label_refs::issue_id.eq(issue_id))
+        .order_by(labels::name.asc())
+        .select(Label::as_select())
         .load(conn)
         .await?;
     let relations: Vec<IssueRelation> = issue_relations::table
@@ -36,6 +40,45 @@ async fn fetch_issue_extras(
         .load(conn)
         .await?;
     Ok((labels, relations))
+}
+
+async fn resolve_label_refs(
+    conn: &mut diesel_async::AsyncPgConnection,
+    issue_id: i64,
+    project_id: i64,
+    names: &[String],
+) -> Result<Vec<IssueLabelRef>, AppError> {
+    let requested: Vec<String> = names.iter().fold(Vec::new(), |mut acc, name| {
+        if !acc.iter().any(|existing| existing == name) {
+            acc.push(name.clone());
+        }
+        acc
+    });
+
+    if requested.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let rows: Vec<Label> = labels::table
+        .filter(labels::project_id.eq(project_id))
+        .filter(labels::name.eq_any(&requested))
+        .select(Label::as_select())
+        .load(conn)
+        .await?;
+
+    for name in &requested {
+        if !rows.iter().any(|label| &label.name == name) {
+            return Err(AppError::BadRequest(format!("label not found: {name}")));
+        }
+    }
+
+    Ok(rows
+        .into_iter()
+        .map(|label| IssueLabelRef {
+            issue_id,
+            label_id: label.id,
+        })
+        .collect())
 }
 
 #[derive(Serialize)]
@@ -155,22 +198,21 @@ pub async fn get_new_issues(
         .map(|(issue, _)| issue.id)
         .collect();
 
-    let label_rows: Vec<IssueLabel> = if issue_ids.is_empty() {
+    let label_rows: Vec<(i64, String)> = if issue_ids.is_empty() {
         Vec::new()
     } else {
-        issue_labels::table
-            .filter(issue_labels::issue_id.eq_any(&issue_ids))
-            .order_by((issue_labels::issue_id.asc(), issue_labels::label.asc()))
+        issue_label_refs::table
+            .inner_join(labels::table)
+            .filter(issue_label_refs::issue_id.eq_any(&issue_ids))
+            .order_by((issue_label_refs::issue_id.asc(), labels::name.asc()))
+            .select((issue_label_refs::issue_id, labels::name))
             .load(&mut conn)
             .await?
     };
 
     let mut labels_by_issue: HashMap<i64, Vec<String>> = HashMap::new();
-    for label in label_rows {
-        labels_by_issue
-            .entry(label.issue_id)
-            .or_default()
-            .push(label.label);
+    for (issue_id, label) in label_rows {
+        labels_by_issue.entry(issue_id).or_default().push(label);
     }
 
     let mut summarize = |rows: Vec<(Issue, Project)>| {
@@ -251,10 +293,6 @@ pub async fn create_issue(
             body.priority
         )));
     }
-    if !validate_labels(&body.labels) {
-        return Err(AppError::BadRequest("one or more invalid labels".into()));
-    }
-
     let parent_id = body
         .parent_id
         .as_deref()
@@ -323,17 +361,10 @@ pub async fn create_issue(
         .get_result(&mut conn)
         .await?;
 
-    if !body.labels.is_empty() {
-        let label_rows: Vec<IssueLabel> = body
-            .labels
-            .iter()
-            .map(|l| IssueLabel {
-                issue_id: created.id,
-                label: l.clone(),
-            })
-            .collect();
-        diesel::insert_into(issue_labels::table)
-            .values(&label_rows)
+    let label_refs = resolve_label_refs(&mut conn, created.id, project_id, &body.labels).await?;
+    if !label_refs.is_empty() {
+        diesel::insert_into(issue_label_refs::table)
+            .values(&label_refs)
             .execute(&mut conn)
             .await?;
     }
@@ -380,12 +411,6 @@ pub async fn update_issue(
             return Err(AppError::BadRequest(format!("invalid priority: {p}")));
         }
     }
-    if let Some(ref ls) = body.labels {
-        if !validate_labels(ls) {
-            return Err(AppError::BadRequest("one or more invalid labels".into()));
-        }
-    }
-
     let assignee_change = match body.assignee_id {
         Some(Some(ref s)) => {
             let parsed = s
@@ -433,20 +458,16 @@ pub async fn update_issue(
 
     // Replace labels if provided
     if let Some(new_labels) = body.labels {
-        diesel::delete(issue_labels::table.filter(issue_labels::issue_id.eq(issue_id)))
+        let label_refs =
+            resolve_label_refs(&mut conn, updated.id, updated.project_id, &new_labels).await?;
+
+        diesel::delete(issue_label_refs::table.filter(issue_label_refs::issue_id.eq(issue_id)))
             .execute(&mut conn)
             .await?;
 
-        if !new_labels.is_empty() {
-            let label_rows: Vec<IssueLabel> = new_labels
-                .into_iter()
-                .map(|l| IssueLabel {
-                    issue_id: updated.id,
-                    label: l,
-                })
-                .collect();
-            diesel::insert_into(issue_labels::table)
-                .values(&label_rows)
+        if !label_refs.is_empty() {
+            diesel::insert_into(issue_label_refs::table)
+                .values(&label_refs)
                 .execute(&mut conn)
                 .await?;
         }

@@ -58,6 +58,7 @@ pub fn router() -> Router<AppState> {
                     "/projects/{id}/issues",
                     get(issues::list_project_issues).post(issues::create_issue),
                 )
+                .route("/projects/{id}/labels", get(projects::list_project_labels))
                 .route("/issues/{id}/body.md", get(issues::get_issue_body_markdown))
                 .route(
                     "/issues/{id}",

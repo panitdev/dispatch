@@ -6,14 +6,22 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     models::issue::{IssueLabelRef, NewIssue, NewIssueHistoryEntry},
-    schema::{issue_history, issue_idempotency_keys, issue_label_refs, issues, labels, projects, states, users},
+    schema::{
+        issue_history, issue_idempotency_keys, issue_label_refs, issues, labels, projects, states,
+        users,
+    },
     state::AppState,
 };
 
-use super::{body_markdown, invalid_reference_error, iso8601, map_db_error, parse_snowflake_id, status_from_state_group};
+use super::{
+    body_markdown, invalid_reference_error, iso8601, map_db_error, parse_snowflake_id,
+    status_from_state_group,
+};
 use crate::mcp::{
     auth::McpIdentity,
-    protocol::{dispatch_error_result, json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
+    protocol::{
+        dispatch_error_result, json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS,
+    },
 };
 use crate::models::label::State;
 
@@ -151,6 +159,7 @@ pub async fn call(
     for &lid in &label_ids {
         let exists: i64 = labels::table
             .filter(labels::id.eq(lid))
+            .filter(labels::project_id.eq(project_id))
             .count()
             .get_result(&mut conn)
             .await
@@ -158,7 +167,7 @@ pub async fn call(
         if exists == 0 {
             return invalid_reference_error(
                 "label_ids",
-                &format!("label not found: {lid}"),
+                &format!("label not found for project: {lid}"),
                 None,
             );
         }

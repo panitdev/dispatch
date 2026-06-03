@@ -104,6 +104,7 @@ function mapNowIssue(issue: ApiNowIssue, active = false): Issue {
   return {
     id: issue.id,
     key: issue.key,
+    projectId: issue.project.id,
     title: issue.title,
     sub:
       issue.description ??
@@ -114,6 +115,7 @@ function mapNowIssue(issue: ApiNowIssue, active = false): Issue {
     projectKey: issue.project.key,
     projectColor: issue.project.color,
     status: formatStatusLabel(issue.status),
+    labels: issue.labels,
     active,
     dot: issue.status === 'doing' ? 'cobalt' : issue.status === 'draft' ? 'amber' : 'empty',
   }

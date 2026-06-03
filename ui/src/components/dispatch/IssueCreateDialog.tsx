@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover
 
 import { IssueEditor } from './IssueEditor'
 import { StatusCircle } from './primitives'
-import { createIssue, getDisplayErrorMessage, listProjects } from '#/lib/api'
+import { createIssue, getDisplayErrorMessage, listProjectLabels, listProjects } from '#/lib/api'
 import { toast } from 'sonner'
 
 import type { IssueBodyBlock } from './IssueEditor'
@@ -43,8 +43,6 @@ function flattenProjects(
 }
 
 const STATUSES = ['Doing', 'Next', 'Draft', 'Done', 'Cancelled']
-const LABELS = ['bug', 'feature', 'improvement', 'docs']
-
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
@@ -76,6 +74,7 @@ export function IssueCreateDialog({
   const [labelsOpen, setLabelsOpen] = useState(false)
   const [status, setStatus] = useState('draft')
   const [labels, setLabels] = useState<string[]>([])
+  const [availableLabels, setAvailableLabels] = useState<string[]>([])
 
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -96,6 +95,32 @@ export function IssueCreateDialog({
       setTimeout(() => titleRef.current?.focus(), 50)
     }
   }, [open])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!open || !projectId) {
+      setAvailableLabels([])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    listProjectLabels(projectId)
+      .then((rows) => {
+        if (cancelled) return
+        const names = rows.map((label) => label.name)
+        setAvailableLabels(names)
+        setLabels((current) => current.filter((label) => names.includes(label)))
+      })
+      .catch(() => {
+        if (!cancelled) setAvailableLabels([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, projectId])
 
   const projectList = flattenProjects(projects)
   const selectedProject = projectList.find((p) => p.project.id === projectId)?.project
@@ -302,7 +327,7 @@ export function IssueCreateDialog({
                 <div className="mb-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--dispatch-text-quaternary)]">
                   Labels
                 </div>
-                {LABELS.map((label) => {
+                {availableLabels.map((label) => {
                   const selected = labels.includes(label)
                   return (
                     <button

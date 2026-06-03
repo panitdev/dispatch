@@ -139,30 +139,10 @@ pub async fn call(
     };
 
     let new_label_ids: Option<Vec<i64>> = if let Some(ref lids) = args.patch.label_ids {
-        let mut conn = state
-            .db
-            .get()
-            .await
-            .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
         let parsed: Vec<i64> = lids
             .iter()
             .map(|id| parse_snowflake_id(id, "label_ids"))
             .collect::<Result<Vec<_>, _>>()?;
-        for &lid in &parsed {
-            let exists: i64 = labels::table
-                .filter(labels::id.eq(lid))
-                .count()
-                .get_result(&mut conn)
-                .await
-                .unwrap_or(0);
-            if exists == 0 {
-                return invalid_reference_error(
-                    "label_ids",
-                    &format!("label not found: {lid}"),
-                    None,
-                );
-            }
-        }
         Some(parsed)
     } else {
         None
@@ -211,16 +191,12 @@ async fn apply_to_one(
         .await
         .map_err(|_| "database unavailable".to_owned())?;
 
-    // Verify issue exists
-    let exists: i64 = issues::table
-        .filter(issues::id.eq(issue_id))
-        .count()
+    let current_project_id: i64 = issues::table
+        .find(issue_id)
+        .select(issues::project_id)
         .get_result(&mut conn)
         .await
-        .unwrap_or(0);
-    if exists == 0 {
-        return Err(format!("not found: {id_str}"));
-    }
+        .map_err(|_| format!("not found: {id_str}"))?;
 
     let mut changeset = IssueChangeset::default();
     let mut has_changes = false;
@@ -252,7 +228,21 @@ async fn apply_to_one(
             .map_err(|_| format!("update failed for {id_str}"))?;
     }
 
+    let target_project_id = new_project_id.unwrap_or(current_project_id);
     if let Some(ref lids) = new_label_ids {
+        for &lid in lids {
+            let exists: i64 = labels::table
+                .filter(labels::id.eq(lid))
+                .filter(labels::project_id.eq(target_project_id))
+                .count()
+                .get_result(&mut conn)
+                .await
+                .unwrap_or(0);
+            if exists == 0 {
+                return Err(format!("label not found for project: {lid}"));
+            }
+        }
+
         diesel::delete(issue_label_refs::table.filter(issue_label_refs::issue_id.eq(issue_id)))
             .execute(&mut conn)
             .await
@@ -273,6 +263,11 @@ async fn apply_to_one(
                 .await
                 .map_err(|_| format!("label insert failed for {id_str}"))?;
         }
+    } else if new_project_id.is_some() {
+        diesel::delete(issue_label_refs::table.filter(issue_label_refs::issue_id.eq(issue_id)))
+            .execute(&mut conn)
+            .await
+            .map_err(|_| format!("label update failed for {id_str}"))?;
     }
 
     Ok(())

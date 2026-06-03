@@ -85,6 +85,7 @@ pub async fn call(
 
     let mut changeset = IssueChangeset::default();
     let mut history_entries: Vec<(&'static str, Option<String>, Option<String>)> = vec![];
+    let mut project_changed_to: Option<i64> = None;
 
     if let Some(title) = patch.title {
         if title != current.title {
@@ -214,6 +215,7 @@ pub async fn call(
                 Some(pid.to_string()),
             ));
             changeset.project_id = Some(pid);
+            project_changed_to = Some(pid);
         }
     }
 
@@ -277,10 +279,11 @@ pub async fn call(
             .map(|id| parse_snowflake_id(id, "label_ids"))
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Validate all label IDs
+        // Validate all label IDs against the target project.
         for &lid in &lids {
             let exists: i64 = labels::table
                 .filter(labels::id.eq(lid))
+                .filter(labels::project_id.eq(updated.project_id))
                 .count()
                 .get_result(&mut conn)
                 .await
@@ -288,7 +291,7 @@ pub async fn call(
             if exists == 0 {
                 return invalid_reference_error(
                     "label_ids",
-                    &format!("label not found: {lid}"),
+                    &format!("label not found for project: {lid}"),
                     None,
                 );
             }
@@ -314,6 +317,11 @@ pub async fn call(
                 .await
                 .map_err(|e| map_db_error(e, None))?;
         }
+    } else if project_changed_to.is_some() {
+        diesel::delete(issue_label_refs::table.filter(issue_label_refs::issue_id.eq(issue_id)))
+            .execute(&mut conn)
+            .await
+            .map_err(|e| map_db_error(e, None))?;
     }
 
     // Write history entries

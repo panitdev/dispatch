@@ -49,6 +49,7 @@ diesel::table! {
     labels (id) {
         id         -> Int8,
         team_id    -> Int8,
+        project_id -> Int8,
         name       -> Varchar,
         color      -> Varchar,
         created_at -> Timestamptz,
@@ -152,6 +153,7 @@ diesel::joinable!(issue_history -> issues (issue_id));
 diesel::joinable!(dispatch_api_keys -> users (user_id));
 diesel::joinable!(states -> teams (team_id));
 diesel::joinable!(labels -> teams (team_id));
+diesel::joinable!(labels -> projects (project_id));
 diesel::joinable!(projects -> teams (team_id));
 
 diesel::allow_tables_to_appear_in_same_query!(

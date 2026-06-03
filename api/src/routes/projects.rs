@@ -11,13 +11,47 @@ use std::time::Instant;
 use crate::{
     auth::kratos::KratosIdentity,
     error::{ApiResult, AppError},
+    models::label::{Label, LabelResponse, NewLabel},
     models::project::{
         build_project_tree, CreateProjectRequest, NewProject, Project, ProjectChangeset,
         ProjectResponse, UpdateProjectRequest,
     },
-    schema::projects,
+    schema::{labels, projects},
     state::AppState,
 };
+
+const DEFAULT_PROJECT_LABELS: &[(&str, &str)] = &[
+    ("bug", "#e11d48"),
+    ("feature", "#2563eb"),
+    ("improvement", "#7c3aed"),
+    ("docs", "#0891b2"),
+];
+
+async fn insert_default_project_labels(
+    state: &AppState,
+    conn: &mut diesel_async::AsyncPgConnection,
+    project: &Project,
+) -> Result<(), AppError> {
+    let team_id = project.team_id.unwrap_or(1);
+    let rows: Vec<NewLabel> = DEFAULT_PROJECT_LABELS
+        .iter()
+        .map(|(name, color)| NewLabel {
+            id: state.next_id(),
+            team_id,
+            project_id: project.id,
+            name: (*name).to_owned(),
+            color: (*color).to_owned(),
+        })
+        .collect();
+
+    diesel::insert_into(labels::table)
+        .values(&rows)
+        .on_conflict_do_nothing()
+        .execute(conn)
+        .await?;
+
+    Ok(())
+}
 
 pub async fn list_projects(
     _identity: KratosIdentity,
@@ -65,11 +99,42 @@ pub async fn create_project(
         .values(&new_project)
         .get_result(&mut conn)
         .await?;
+    insert_default_project_labels(&state, &mut conn, &created).await?;
 
     Ok((
         StatusCode::CREATED,
         Json(ProjectResponse::from_flat(created)),
     ))
+}
+
+pub async fn list_project_labels(
+    _identity: KratosIdentity,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Vec<LabelResponse>>> {
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let mut conn = state.db.get().await?;
+
+    let project_exists: i64 = projects::table
+        .filter(projects::id.eq(project_id))
+        .count()
+        .get_result(&mut conn)
+        .await?;
+
+    if project_exists == 0 {
+        return Err(AppError::NotFound);
+    }
+
+    let rows: Vec<Label> = labels::table
+        .filter(labels::project_id.eq(project_id))
+        .order_by(labels::name.asc())
+        .select(Label::as_select())
+        .load(&mut conn)
+        .await?;
+
+    Ok(Json(rows.into_iter().map(LabelResponse::from).collect()))
 }
 
 pub async fn get_project(

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BarChart2, Download, ExternalLink, Pencil, Tag, Trash2 } from 'lucide-react'
 
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { StatusCircle } from './primitives'
+import { listProjectLabels } from '@/lib/api'
 
 const STATUSES = ['Doing', 'Next', 'Draft', 'Done', 'Cancelled']
 
@@ -28,8 +30,6 @@ const PRIORITIES: { label: string; value: number }[] = [
   { label: 'Medium', value: 3 },
   { label: 'Low', value: 4 },
 ]
-
-const LABELS = ['bug', 'feature', 'improvement', 'docs']
 
 const ITEM_CLS = 'py-1.5 text-[13px]'
 const SUB_TRIGGER_CLS = 'py-1.5 text-[13px]'
@@ -49,6 +49,7 @@ function capitalize(s: string) {
 }
 
 export type IssueMenuProps = {
+  projectId?: string
   status: string
   priority: number
   labels: string[]
@@ -61,7 +62,40 @@ export type IssueMenuProps = {
   onExportMarkdown?: () => void
 }
 
+function useProjectLabelOptions(projectId: string | undefined, selectedLabels: string[]) {
+  const [projectLabels, setProjectLabels] = useState<string[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!projectId) {
+      setProjectLabels([])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    listProjectLabels(projectId)
+      .then((rows) => {
+        if (!cancelled) setProjectLabels(rows.map((label) => label.name))
+      })
+      .catch(() => {
+        if (!cancelled) setProjectLabels([])
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
+  return [
+    ...projectLabels,
+    ...selectedLabels.filter((label) => !projectLabels.includes(label)),
+  ]
+}
+
 export function IssueContextMenuItems({
+  projectId,
   status,
   priority,
   labels,
@@ -74,6 +108,7 @@ export function IssueContextMenuItems({
   onExportMarkdown,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
+  const labelOptions = useProjectLabelOptions(projectId, labels)
 
   function toggleLabel(label: string) {
     if (labels.includes(label)) {
@@ -150,7 +185,7 @@ export function IssueContextMenuItems({
           Labels
         </ContextMenuSubTrigger>
         <ContextMenuSubContent className="min-w-[140px]">
-          {LABELS.map((label) => (
+          {labelOptions.map((label) => (
             <ContextMenuCheckboxItem
               key={label}
               checked={labels.includes(label)}
@@ -181,6 +216,7 @@ export function IssueContextMenuItems({
 }
 
 export function IssueDropdownMenuItems({
+  projectId,
   status,
   priority,
   labels,
@@ -193,6 +229,7 @@ export function IssueDropdownMenuItems({
   onExportMarkdown,
 }: IssueMenuProps) {
   const normalized = status.toLowerCase()
+  const labelOptions = useProjectLabelOptions(projectId, labels)
 
   function toggleLabel(label: string) {
     if (labels.includes(label)) {
@@ -269,7 +306,7 @@ export function IssueDropdownMenuItems({
           Labels
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="min-w-[140px]">
-          {LABELS.map((label) => (
+          {labelOptions.map((label) => (
             <DropdownMenuCheckboxItem
               key={label}
               checked={labels.includes(label)}

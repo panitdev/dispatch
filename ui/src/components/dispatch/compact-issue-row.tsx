@@ -113,6 +113,7 @@ function PriorityIcon({ priority }: { priority?: number }) {
 
 export type CompactIssueRowData = {
   id?: string
+  projectId?: string
   issueKey: string
   status: string
   priority?: number
@@ -125,6 +126,7 @@ export type CompactIssueRowData = {
 
 export function CompactIssueRow({
   id,
+  projectId,
   issueKey,
   status,
   priority,
@@ -201,6 +203,7 @@ export function CompactIssueRow({
   }
 
   const menuProps = {
+    projectId,
     status: currentStatus,
     priority: currentPriority,
     labels: currentLabels,

@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 
+use serde::Serialize;
+
 use crate::schema::{labels, states, teams};
 
 #[derive(Debug, Clone, Queryable, Selectable)]
@@ -9,9 +11,39 @@ use crate::schema::{labels, states, teams};
 pub struct Label {
     pub id: i64,
     pub team_id: i64,
+    pub project_id: i64,
     pub name: String,
     pub color: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = labels)]
+pub struct NewLabel {
+    pub id: i64,
+    pub team_id: i64,
+    pub project_id: i64,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Serialize)]
+pub struct LabelResponse {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub color: String,
+}
+
+impl From<Label> for LabelResponse {
+    fn from(label: Label) -> Self {
+        Self {
+            id: label.id.to_string(),
+            project_id: label.project_id.to_string(),
+            name: label.name,
+            color: label.color,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Queryable, Selectable)]

@@ -65,6 +65,7 @@ function mapDraftIssue(issue: ApiNowIssue): Issue {
   return {
     id: issue.id,
     key: issue.key,
+    projectId: issue.project.id,
     title: issue.title,
     sub:
       issue.description ??
@@ -75,6 +76,7 @@ function mapDraftIssue(issue: ApiNowIssue): Issue {
     projectKey: issue.project.key,
     projectColor: issue.project.color,
     status: formatStatusLabel(issue.status),
+    labels: issue.labels,
     dot: 'amber',
   }
 }

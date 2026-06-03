@@ -67,8 +67,8 @@ function IssueRow({
 }) {
   const navigate = useNavigate()
   const [currentStatus, setCurrentStatus] = useState(issue.status.toLowerCase())
-  const [currentPriority, setCurrentPriority] = useState(0)
-  const [currentLabels, setCurrentLabels] = useState<string[]>([])
+  const [currentPriority, setCurrentPriority] = useState(issue.priority ?? 0)
+  const [currentLabels, setCurrentLabels] = useState<string[]>(issue.labels ?? [])
   const [menuOpen, setMenuOpen] = useState(false)
   const [contentKey, setContentKey] = useState(0)
 
@@ -127,6 +127,7 @@ function IssueRow({
   }
 
   const menuProps = {
+    projectId: issue.projectId,
     status: currentStatus,
     priority: currentPriority,
     labels: currentLabels,

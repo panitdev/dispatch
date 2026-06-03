@@ -4,12 +4,15 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
-    models::{label::{Label, State, Team}, project::Project, user::User},
+    models::{
+        label::{Label, State, Team},
+        project::Project,
+        user::User,
+    },
     schema::{labels, projects, states, teams, users},
     state::AppState,
 };
 
-use super::iso8601;
 use crate::mcp::{
     auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
@@ -26,8 +29,9 @@ pub async fn call(
     state: &AppState,
     args: Value,
 ) -> Result<Value, JsonRpcError> {
-    let args: GetWorkspaceMetadataArgs = serde_json::from_value(args)
-        .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid get_workspace_metadata arguments"))?;
+    let args: GetWorkspaceMetadataArgs = serde_json::from_value(args).map_err(|_| {
+        JsonRpcError::new(INVALID_PARAMS, "invalid get_workspace_metadata arguments")
+    })?;
 
     let fetch_all = args.scope.is_empty();
     let fetch = |key: &str| fetch_all || args.scope.iter().any(|s| s == key);
@@ -61,13 +65,15 @@ pub async fn call(
             .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database error"))?;
         result["states"] = Value::Array(
             rows.iter()
-                .map(|s| json!({
-                    "id":      s.id.to_string(),
-                    "name":    s.name,
-                    "group":   s.group_name,
-                    "color":   s.color,
-                    "team_id": s.team_id.to_string(),
-                }))
+                .map(|s| {
+                    json!({
+                        "id":      s.id.to_string(),
+                        "name":    s.name,
+                        "group":   s.group_name,
+                        "color":   s.color,
+                        "team_id": s.team_id.to_string(),
+                    })
+                })
                 .collect(),
         );
     }
@@ -80,12 +86,15 @@ pub async fn call(
             .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database error"))?;
         result["labels"] = Value::Array(
             rows.iter()
-                .map(|l| json!({
-                    "id":      l.id.to_string(),
-                    "name":    l.name,
-                    "color":   l.color,
-                    "team_id": l.team_id.to_string(),
-                }))
+                .map(|l| {
+                    json!({
+                        "id":      l.id.to_string(),
+                        "name":    l.name,
+                        "color":   l.color,
+                        "team_id": l.team_id.to_string(),
+                        "project_id": l.project_id.to_string(),
+                    })
+                })
                 .collect(),
         );
     }
@@ -98,11 +107,13 @@ pub async fn call(
             .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database error"))?;
         result["projects"] = Value::Array(
             rows.iter()
-                .map(|p| json!({
-                    "id":      p.id.to_string(),
-                    "name":    p.name,
-                    "team_id": p.team_id.map(|id| id.to_string()),
-                }))
+                .map(|p| {
+                    json!({
+                        "id":      p.id.to_string(),
+                        "name":    p.name,
+                        "team_id": p.team_id.map(|id| id.to_string()),
+                    })
+                })
                 .collect(),
         );
     }
@@ -133,8 +144,7 @@ mod tests {
 
     #[test]
     fn empty_scope_means_fetch_all() {
-        let args: GetWorkspaceMetadataArgs =
-            serde_json::from_value(json!({})).unwrap();
+        let args: GetWorkspaceMetadataArgs = serde_json::from_value(json!({})).unwrap();
         assert!(args.scope.is_empty());
     }
 

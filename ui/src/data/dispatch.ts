@@ -12,13 +12,15 @@ export type DispatchPage =
 export type Issue = {
   id?: string
   key?: string
+  projectId?: string
   title: string
   sub: string
   project: string
   projectKey: ProjectKey
   projectColor?: string
   status: Status
-  priority?: string
+  priority?: number
+  labels?: string[]
   active?: boolean
   dot?: 'cobalt' | 'amber' | 'empty'
 }

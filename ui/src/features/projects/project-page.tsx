@@ -242,6 +242,7 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
                   >
                     <CompactIssueRow
                       id={issue.id}
+                      projectId={issue.project_id}
                       issueKey={issue.key}
                       status={issue.status}
                       priority={issue.priority}

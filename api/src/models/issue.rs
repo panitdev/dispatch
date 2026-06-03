@@ -3,7 +3,12 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::schema::{issue_comments, issue_history, issue_label_refs, issue_labels, issue_relations, issues};
+use crate::{
+    models::label::Label,
+    schema::{
+        issue_comments, issue_history, issue_label_refs, issue_labels, issue_relations, issues,
+    },
+};
 
 pub use dispatch_issue_body_markdown::IssueBodyBlock;
 
@@ -190,7 +195,7 @@ pub struct IssueResponse {
 }
 
 impl IssueResponse {
-    pub fn new(issue: Issue, labels: Vec<IssueLabel>, relations: Vec<IssueRelation>) -> Self {
+    pub fn new(issue: Issue, labels: Vec<Label>, relations: Vec<IssueRelation>) -> Self {
         let blocked_by = relations
             .iter()
             .filter(|r| r.relation_type == "blocked_by")
@@ -209,7 +214,7 @@ impl IssueResponse {
             title: issue.title,
             status: issue.status,
             priority: issue.priority,
-            labels: labels.into_iter().map(|l| l.label).collect(),
+            labels: labels.into_iter().map(|l| l.name).collect(),
             assignee_id: issue.assignee_id.map(|id| id.to_string()),
             blocks: serde_json::from_value(issue.blocks).unwrap_or_default(),
             created_at: issue.created_at.to_rfc3339(),
@@ -224,14 +229,9 @@ impl IssueResponse {
 
 const VALID_STATUSES: &[&str] = &["draft", "next", "doing", "done", "cancelled"];
 const PRIORITY_RANGE: std::ops::RangeInclusive<i32> = 0..=4;
-const VALID_LABELS: &[&str] = &["bug", "feature", "improvement", "docs"];
-
 pub fn validate_status(s: &str) -> bool {
     VALID_STATUSES.contains(&s)
 }
 pub fn validate_priority(p: i32) -> bool {
     PRIORITY_RANGE.contains(&p)
-}
-pub fn validate_labels(labels: &[String]) -> bool {
-    labels.iter().all(|l| VALID_LABELS.contains(&l.as_str()))
 }
