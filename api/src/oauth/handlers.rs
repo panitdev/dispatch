@@ -1,4 +1,5 @@
 use axum::{
+    body::Bytes,
     extract::{Form, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Json, Redirect, Response},
@@ -69,7 +70,11 @@ pub async fn oauth_protected_resource_metadata_for_mcp(
 }
 
 fn protected_resource_metadata(state: &AppState, resource: String) -> serde_json::Value {
-    let authorization_server = state.config.hydra_public_url.trim_end_matches('/').to_owned();
+    let authorization_server = state
+        .config
+        .dispatch_public_url
+        .trim_end_matches('/')
+        .to_owned();
     serde_json::json!({
         "resource": resource,
         "authorization_servers": [authorization_server],
@@ -79,18 +84,48 @@ fn protected_resource_metadata(state: &AppState, resource: String) -> serde_json
 }
 
 pub async fn oauth_metadata(State(state): State<AppState>) -> Json<serde_json::Value> {
-    let issuer = state.config.hydra_public_url.trim_end_matches('/');
+    let issuer = state.config.dispatch_public_url.trim_end_matches('/');
+    let hydra = state.config.hydra_public_url.trim_end_matches('/');
     Json(serde_json::json!({
         "issuer": issuer,
-        "authorization_endpoint": format!("{issuer}/oauth2/auth"),
+        "authorization_endpoint": format!("{hydra}/oauth2/auth"),
         "token_endpoint": format!("{issuer}/oauth2/token"),
-        "jwks_uri": format!("{issuer}/.well-known/jwks.json"),
+        "jwks_uri": format!("{hydra}/.well-known/jwks.json"),
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
         "code_challenge_methods_supported": ["S256"],
         "scopes_supported": ["dispatch:read", "dispatch:write"],
     }))
+}
+
+pub async fn oauth_token_proxy(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, StatusCode> {
+    let url = format!(
+        "{}/oauth2/token",
+        state.config.hydra_public_url.trim_end_matches('/')
+    );
+    let mut req = state.http.post(url).body(body.to_vec());
+
+    for name in [header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT] {
+        if let Some(value) = headers.get(&name) {
+            req = req.header(name, value);
+        }
+    }
+
+    let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    let content_type = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .cloned()
+        .unwrap_or_else(|| "application/json".parse().expect("valid content-type"));
+    let body = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    Ok((status, [(header::CONTENT_TYPE, content_type)], body).into_response())
 }
 
 pub async fn oauth_login(

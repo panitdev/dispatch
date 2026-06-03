@@ -1,4 +1,7 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 use crate::mcp;
 use crate::{oauth, state::AppState};
@@ -16,6 +19,10 @@ pub fn router() -> Router<AppState> {
             get(oauth::handlers::oauth_metadata),
         )
         .route(
+            "/.well-known/openid-configuration",
+            get(oauth::handlers::oauth_metadata),
+        )
+        .route(
             "/.well-known/oauth-protected-resource",
             get(oauth::handlers::oauth_protected_resource_metadata),
         )
@@ -24,6 +31,8 @@ pub fn router() -> Router<AppState> {
             get(oauth::handlers::oauth_protected_resource_metadata_for_mcp),
         )
         .route("/oauth/login", get(oauth::handlers::oauth_login))
+        .route("/oauth2/token", post(oauth::handlers::oauth_token_proxy))
+        .route("/token", post(oauth::handlers::oauth_token_proxy))
         .route(
             "/oauth/consent",
             get(oauth::handlers::oauth_consent_show).post(oauth::handlers::oauth_consent_submit),

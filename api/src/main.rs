@@ -1,4 +1,4 @@
-use axum::http::{header, HeaderValue, Method};
+use axum::http::{header, HeaderName, HeaderValue, Method};
 use diesel::Connection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -89,6 +89,7 @@ async fn main() {
                 header::AUTHORIZATION,
                 header::COOKIE,
                 header::ACCEPT,
+                HeaderName::from_static("mcp-protocol-version"),
             ])
             .expose_headers([header::WWW_AUTHENTICATE])
             .allow_credentials(true)
