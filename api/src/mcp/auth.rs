@@ -170,7 +170,7 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
 fn unauthorized(state: &AppState) -> McpError {
     McpError::Unauthorized {
         resource_metadata: format!(
-            "{}/.well-known/oauth-protected-resource",
+            "{}/.well-known/oauth-protected-resource/mcp",
             state.config.dispatch_public_url.trim_end_matches('/')
         ),
     }

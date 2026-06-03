@@ -66,12 +66,17 @@ async fn main() {
     };
 
     let cors = {
-        let origin: HeaderValue = config
-            .frontend_origin
-            .parse()
-            .expect("FRONTEND_ORIGIN is not a valid header value");
+        let origins: Vec<HeaderValue> = config
+            .cors_allowed_origins
+            .iter()
+            .map(|origin| {
+                origin
+                    .parse()
+                    .unwrap_or_else(|_| panic!("CORS origin is not a valid header value: {origin}"))
+            })
+            .collect();
         CorsLayer::new()
-            .allow_origin(origin)
+            .allow_origin(origins)
             .allow_methods([
                 Method::GET,
                 Method::POST,
@@ -85,6 +90,7 @@ async fn main() {
                 header::COOKIE,
                 header::ACCEPT,
             ])
+            .expose_headers([header::WWW_AUTHENTICATE])
             .allow_credentials(true)
     };
 

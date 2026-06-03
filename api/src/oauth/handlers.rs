@@ -58,36 +58,39 @@ pub async fn oauth_protected_resource_metadata(
     State(state): State<AppState>,
 ) -> Json<serde_json::Value> {
     let resource = state.config.dispatch_public_url.trim_end_matches('/').to_owned();
+    Json(protected_resource_metadata(&state, resource))
+}
+
+pub async fn oauth_protected_resource_metadata_for_mcp(
+    State(state): State<AppState>,
+) -> Json<serde_json::Value> {
+    let resource = format!("{}/mcp", state.config.dispatch_public_url.trim_end_matches('/'));
+    Json(protected_resource_metadata(&state, resource))
+}
+
+fn protected_resource_metadata(state: &AppState, resource: String) -> serde_json::Value {
     let authorization_server = state.config.hydra_public_url.trim_end_matches('/').to_owned();
-    Json(serde_json::json!({
+    serde_json::json!({
         "resource": resource,
         "authorization_servers": [authorization_server],
         "bearer_methods_supported": ["header"],
         "scopes_supported": ["dispatch:read", "dispatch:write"],
-    }))
+    })
 }
 
-pub async fn oauth_metadata(State(state): State<AppState>) -> Result<Response, StatusCode> {
-    let url = format!(
-        "{}/.well-known/oauth-authorization-server",
-        state.config.hydra_public_url.trim_end_matches('/')
-    );
-    let resp = state
-        .http
-        .get(url)
-        .send()
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
-
-    let status = StatusCode::from_u16(resp.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-    let content_type = resp
-        .headers()
-        .get(header::CONTENT_TYPE)
-        .cloned()
-        .unwrap_or_else(|| "application/json".parse().expect("valid content-type"));
-    let body = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
-
-    Ok((status, [(header::CONTENT_TYPE, content_type)], body).into_response())
+pub async fn oauth_metadata(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let issuer = state.config.hydra_public_url.trim_end_matches('/');
+    Json(serde_json::json!({
+        "issuer": issuer,
+        "authorization_endpoint": format!("{issuer}/oauth2/auth"),
+        "token_endpoint": format!("{issuer}/oauth2/token"),
+        "jwks_uri": format!("{issuer}/.well-known/jwks.json"),
+        "response_types_supported": ["code"],
+        "grant_types_supported": ["authorization_code", "refresh_token"],
+        "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
+        "code_challenge_methods_supported": ["S256"],
+        "scopes_supported": ["dispatch:read", "dispatch:write"],
+    }))
 }
 
 pub async fn oauth_login(

@@ -19,6 +19,10 @@ pub fn router() -> Router<AppState> {
             "/.well-known/oauth-protected-resource",
             get(oauth::handlers::oauth_protected_resource_metadata),
         )
+        .route(
+            "/.well-known/oauth-protected-resource/mcp",
+            get(oauth::handlers::oauth_protected_resource_metadata_for_mcp),
+        )
         .route("/oauth/login", get(oauth::handlers::oauth_login))
         .route(
             "/oauth/consent",
