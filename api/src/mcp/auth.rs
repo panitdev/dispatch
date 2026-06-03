@@ -52,6 +52,7 @@ where
     type Rejection = McpError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let state = AppState::from_ref(state);
         let auth = parts
             .headers
             .get(header::AUTHORIZATION)
@@ -65,11 +66,10 @@ where
                     has_authorization = auth.is_some(),
                     "mcp auth rejected: missing bearer token"
                 );
-                return Err(McpError::Unauthorized);
+                return Err(unauthorized(&state));
             }
         };
 
-        let state = AppState::from_ref(state);
         if raw.starts_with("dsp_") {
             return verify_api_key(&state, raw).await;
         }
@@ -80,7 +80,7 @@ where
 
 async fn verify_api_key(state: &AppState, raw_key: &str) -> Result<McpIdentity, McpError> {
     if !is_valid_api_key(raw_key) {
-        return Err(McpError::Unauthorized);
+        return Err(unauthorized(state));
     }
 
     let hash = Sha256::digest(raw_key.as_bytes()).to_vec();
@@ -94,7 +94,7 @@ async fn verify_api_key(state: &AppState, raw_key: &str) -> Result<McpIdentity, 
         .await
         .optional()
         .map_err(|_| McpError::Internal)?
-        .ok_or(McpError::Unauthorized)?;
+        .ok_or_else(|| unauthorized(state))?;
 
     drop(conn);
 
@@ -125,16 +125,16 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
     })?;
     if !introspection.active {
         tracing::info!("mcp oauth rejected: inactive token");
-        return Err(McpError::Unauthorized);
+        return Err(unauthorized(state));
     }
 
     let subject = introspection.sub.ok_or_else(|| {
         tracing::info!("mcp oauth rejected: missing subject");
-        McpError::Unauthorized
+        unauthorized(state)
     })?;
     let kratos_id = Uuid::parse_str(&subject).map_err(|_| {
         tracing::info!(subject = %subject, "mcp oauth rejected: subject is not a uuid");
-        McpError::Unauthorized
+        unauthorized(state)
     })?;
     let _expires_at = introspection.exp;
     let scopes = introspection
@@ -157,7 +157,7 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
                 scopes = ?scopes,
                 "mcp oauth rejected: no local dispatch user for token subject"
             );
-            McpError::Unauthorized
+            unauthorized(state)
         })?;
 
     Ok(McpIdentity::OAuth {
@@ -165,6 +165,15 @@ async fn verify_hydra_token(state: &AppState, token: &str) -> Result<McpIdentity
         subject,
         scopes,
     })
+}
+
+fn unauthorized(state: &AppState) -> McpError {
+    McpError::Unauthorized {
+        resource_metadata: format!(
+            "{}/.well-known/oauth-protected-resource",
+            state.config.dispatch_public_url.trim_end_matches('/')
+        ),
+    }
 }
 
 fn is_valid_api_key(raw_key: &str) -> bool {

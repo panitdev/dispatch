@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -47,18 +47,30 @@ impl JsonRpcError {
 
 #[derive(Debug)]
 pub enum McpError {
-    Unauthorized,
+    Unauthorized { resource_metadata: String },
     Internal,
 }
 
 impl IntoResponse for McpError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
-            McpError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
-            McpError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "internal error"),
-        };
-
-        (status, Json(json!({ "error": message }))).into_response()
+        match self {
+            McpError::Unauthorized { resource_metadata } => {
+                let challenge = format!(
+                    "Bearer realm=\"dispatch-mcp\", resource_metadata=\"{resource_metadata}\""
+                );
+                (
+                    StatusCode::UNAUTHORIZED,
+                    [(header::WWW_AUTHENTICATE, challenge)],
+                    Json(json!({ "error": "unauthorized" })),
+                )
+                    .into_response()
+            }
+            McpError::Internal => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal error" })),
+            )
+                .into_response(),
+        }
     }
 }
 
