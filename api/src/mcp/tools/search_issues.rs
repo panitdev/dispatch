@@ -316,6 +316,7 @@ pub async fn call(
 
             json!({
                 "id":          issue.id.to_string(),
+                "key":         issue.key,
                 "title":       issue.title,
                 "state": state.map(|s| json!({
                     "id":    s.id.to_string(),
