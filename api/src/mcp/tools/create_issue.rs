@@ -394,6 +394,7 @@ fn issue_to_json(
 ) -> Value {
     json!({
         "id":          issue.id.to_string(),
+        "key":         issue.key,
         "title":       issue.title,
         "description": description,
         "state":       state_id.map(|id| json!({ "id": id.to_string() })),
@@ -410,6 +411,7 @@ fn issue_to_json(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use serde_json::json;
 
     #[test]
@@ -423,5 +425,32 @@ mod tests {
         let args: CreateIssueArgs =
             serde_json::from_value(json!({ "title": "T", "project_id": "1" })).unwrap();
         assert_eq!(args.priority, 0);
+    }
+
+    #[test]
+    fn create_issue_response_includes_human_readable_key() {
+        let created_at = chrono::Utc.with_ymd_and_hms(2026, 6, 4, 10, 0, 0).unwrap();
+        let issue = crate::models::issue::Issue {
+            id: 101,
+            key: "DIS-15".to_owned(),
+            project_id: 301,
+            parent_id: None,
+            title: "Created issue".to_owned(),
+            status: "draft".to_owned(),
+            priority: 1,
+            author_id: 1,
+            assignee_id: None,
+            blocks: json!([]),
+            created_at,
+            updated_at: created_at,
+            state_id: Some(401),
+        };
+
+        let payload = issue_to_json(&issue, Some("body".to_owned()), issue.state_id, &[901]);
+
+        assert_eq!(payload["id"], "101");
+        assert_eq!(payload["key"], "DIS-15");
+        assert_eq!(payload["project"]["id"], "301");
+        assert_eq!(payload["label_ids"], json!(["901"]));
     }
 }

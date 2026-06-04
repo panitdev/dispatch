@@ -308,29 +308,13 @@ pub async fn call(
     let items: Vec<Value> = rows
         .iter()
         .map(|issue| {
-            let state = issue.state_id.and_then(|sid| state_map.get(&sid));
+            let state = issue.state_id.and_then(|sid| state_map.get(&sid).copied());
             let label_ids_out: Vec<String> = labels_by_issue
                 .get(&issue.id)
                 .map(|ids| ids.iter().map(|id| id.to_string()).collect())
                 .unwrap_or_default();
 
-            json!({
-                "id":          issue.id.to_string(),
-                "key":         issue.key,
-                "title":       issue.title,
-                "state": state.map(|s| json!({
-                    "id":    s.id.to_string(),
-                    "name":  s.name,
-                    "group": s.group_name,
-                })),
-                "priority":    issue.priority,
-                "assignee":    issue.assignee_id.map(|id| json!({ "id": id.to_string() })),
-                "project":     { "id": issue.project_id.to_string() },
-                "parent_id":   issue.parent_id.map(|id| id.to_string()),
-                "label_ids":   label_ids_out,
-                "created_at":  iso8601(issue.created_at),
-                "updated_at":  iso8601(issue.updated_at),
-            })
+            issue_summary_json(issue, state, label_ids_out)
         })
         .collect();
 
@@ -363,10 +347,31 @@ fn decode_cursor(cursor: &str) -> Result<Cursor, JsonRpcError> {
     Ok(Cursor { updated_at, id })
 }
 
+fn issue_summary_json(issue: &Issue, state: Option<&State>, label_ids: Vec<String>) -> Value {
+    json!({
+        "id":          issue.id.to_string(),
+        "key":         issue.key,
+        "title":       issue.title,
+        "state": state.map(|state| json!({
+            "id":    state.id.to_string(),
+            "name":  state.name,
+            "group": state.group_name,
+        })),
+        "priority":    issue.priority,
+        "assignee":    issue.assignee_id.map(|id| json!({ "id": id.to_string() })),
+        "project":     { "id": issue.project_id.to_string() },
+        "parent_id":   issue.parent_id.map(|id| id.to_string()),
+        "label_ids":   label_ids,
+        "created_at":  iso8601(issue.created_at),
+        "updated_at":  iso8601(issue.updated_at),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::TimeZone;
+    use serde_json::json;
 
     #[test]
     fn cursor_round_trips() {
@@ -382,5 +387,41 @@ mod tests {
             decode_cursor("not-base64!!").unwrap_err().code,
             INVALID_PARAMS
         );
+    }
+
+    #[test]
+    fn issue_summary_includes_human_readable_key() {
+        let created_at = Utc.with_ymd_and_hms(2026, 6, 4, 10, 0, 0).unwrap();
+        let updated_at = Utc.with_ymd_and_hms(2026, 6, 4, 11, 0, 0).unwrap();
+        let issue = Issue {
+            id: 101,
+            key: "DIS-6".to_owned(),
+            project_id: 301,
+            parent_id: Some(55),
+            title: "Search response shape".to_owned(),
+            status: "draft".to_owned(),
+            priority: 2,
+            author_id: 1,
+            assignee_id: Some(9),
+            blocks: json!([]),
+            created_at,
+            updated_at,
+            state_id: Some(401),
+        };
+        let state = State {
+            id: 401,
+            team_id: 7,
+            name: "Todo".to_owned(),
+            group_name: "unstarted".to_owned(),
+            color: "#999999".to_owned(),
+            created_at,
+        };
+
+        let summary = issue_summary_json(&issue, Some(&state), vec!["501".to_owned()]);
+
+        assert_eq!(summary["id"], "101");
+        assert_eq!(summary["key"], "DIS-6");
+        assert_eq!(summary["state"]["id"], "401");
+        assert_eq!(summary["label_ids"], json!(["501"]));
     }
 }
