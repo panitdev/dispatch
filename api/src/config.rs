@@ -41,7 +41,7 @@ impl Config {
             kratos_browser_url: env::var("KRATOS_BROWSER_URL")
                 .unwrap_or_else(|_| kratos_public_url.clone()),
             dispatch_public_url: env::var("DISPATCH_PUBLIC_URL")
-                .unwrap_or_else(|_| "http://localhost:8080".into()),
+                .unwrap_or_else(|_| "http://localhost:3000".into()),
             hydra_public_url: env::var("HYDRA_PUBLIC_URL")
                 .unwrap_or_else(|_| "http://localhost:4444".into()),
             hydra_admin_url: env::var("HYDRA_ADMIN_URL")
@@ -54,7 +54,7 @@ impl Config {
             api_port: env::var("API_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(8080),
+                .unwrap_or(3000),
             frontend_dist_dir: env::var("FRONTEND_DIST_DIR")
                 .unwrap_or_else(|_| "ui/dist".into())
                 .into(),

@@ -1,10 +1,11 @@
 services:
-  api:
-    image: ${IMAGE_NAMESPACE:-ghcr.io/panitdev/dispatch}/api:${IMAGE_TAG:-latest}
+  dispatch:
+    image: ${IMAGE_NAMESPACE:-ghcr.io/panitdev/dispatch}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-dispatch}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-dispatch}
-      API_PORT: "8080"
+      API_PORT: "3000"
+      FRONTEND_DIST_DIR: /app/dist
       RUST_LOG: ${RUST_LOG:-info}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
@@ -17,7 +18,7 @@ services:
       SNOWFLAKE_MACHINE_ID: ${SNOWFLAKE_MACHINE_ID:-1}
       SNOWFLAKE_NODE_ID: ${SNOWFLAKE_NODE_ID:-1}
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${DISPATCH_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -21,8 +21,7 @@ jobs:
     name: Detect changed paths
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.changes.outputs.api }}
-      ui: ${{ steps.changes.outputs.ui }}
+      dispatch: ${{ steps.changes.outputs.dispatch }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,8 +33,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "api=true" >> "$GITHUB_OUTPUT"
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "dispatch=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -43,44 +41,35 @@ jobs:
           after_sha="${{ github.sha }}"
 
           if [[ -z "$before_sha" || "$before_sha" == "0000000000000000000000000000000000000000" ]]; then
-            echo "api=true" >> "$GITHUB_OUTPUT"
-            echo "ui=true" >> "$GITHUB_OUTPUT"
+            echo "dispatch=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           changed_files="$(git diff --name-only "$before_sha" "$after_sha")"
 
-          api=false
-          ui=false
+          dispatch=false
 
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
 
             case "$file" in
-              .github/workflows/build.yml|Cargo.toml|Cargo.lock|api/*|crates/*)
-                api=true
-                ;;
-              ui/*)
-                api=true
-                ui=true
+              .github/workflows/build.yml|Cargo.toml|Cargo.lock|api/*|crates/*|ui/*)
+                dispatch=true
                 ;;
             esac
           done <<< "$changed_files"
 
-          echo "api=$api" >> "$GITHUB_OUTPUT"
-          echo "ui=$ui" >> "$GITHUB_OUTPUT"
+          echo "dispatch=$dispatch" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and push images
+    name: Build and push image
     needs:
       - changes
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.ui == 'true'
+    if: needs.changes.outputs.dispatch == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      short_sha: ${{ steps.meta.outputs.short_sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,7 +78,6 @@ jobs:
         id: meta
         shell: bash
         run: |
-          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           echo "image_namespace=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
@@ -102,28 +90,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push API image
-        if: needs.changes.outputs.api == 'true'
+      - name: Build and push dispatch image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: api/Dockerfile
           push: true
           tags: |
-            ${{ steps.meta.outputs.image_namespace }}/api:latest
-            ${{ steps.meta.outputs.image_namespace }}/api:${{ steps.meta.outputs.short_sha }}
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,mode=max,scope=api
-
-      - name: Build and push UI image
-        if: needs.changes.outputs.ui == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: ui
-          file: ui/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.image_namespace }}/ui:latest
-            ${{ steps.meta.outputs.image_namespace }}/ui:${{ steps.meta.outputs.short_sha }}
-          cache-from: type=gha,scope=ui
-          cache-to: type=gha,mode=max,scope=ui
+            ${{ steps.meta.outputs.image_namespace }}:latest
+            ${{ steps.meta.outputs.image_namespace }}:${{ github.sha }}
+          cache-from: type=gha,scope=dispatch
+          cache-to: type=gha,mode=max,scope=dispatch

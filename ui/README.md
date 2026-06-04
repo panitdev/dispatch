@@ -10,7 +10,8 @@ bun --bun run dev
 ```
 
 In dev mode, Vite proxies `/api/*` to `http://localhost:8080` so same-origin
-API requests match the Axum-served production path. Set
+API requests match the Axum-served production path when the API is started with
+`API_PORT=8080`. Set
 `VITE_DEV_API_PROXY_TARGET` to point at a different local API origin.
 
 # Building For Production

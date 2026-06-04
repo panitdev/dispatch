@@ -43,7 +43,7 @@ jobs:
         working-directory: infra/docker
         env:
           IMAGE_NAMESPACE: ${{ steps.meta.outputs.image_namespace }}
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'latest' }}
         run: |
           docker compose --env-file /opt/dispatch/env/compose.env -f compose.prod.yml pull
           docker compose --env-file /opt/dispatch/env/compose.env -f compose.prod.yml up -d
