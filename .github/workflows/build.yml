@@ -61,6 +61,7 @@ jobs:
                 api=true
                 ;;
               ui/*)
+                api=true
                 ui=true
                 ;;
             esac

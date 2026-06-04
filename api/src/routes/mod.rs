@@ -1,19 +1,25 @@
 use axum::{
-    Router,
     routing::{get, patch, post},
+    Router,
 };
+use tower_http::services::{ServeDir, ServeFile};
 
 use crate::mcp;
 use crate::{oauth, state::AppState};
 
+pub mod frontend;
 pub mod health;
 pub mod issues;
 pub mod me;
 pub mod projects;
 
-pub fn router() -> Router<AppState> {
+pub fn router(config: &crate::config::Config) -> Router<AppState> {
+    let frontend_dist_dir = config.frontend_dist_dir.clone();
+    let index = frontend_dist_dir.join("index.html");
+
     Router::new()
         .route("/health", get(health::get_health))
+        .route("/env.js", get(frontend::env_js))
         .route(
             "/.well-known/oauth-authorization-server",
             get(oauth::handlers::oauth_metadata),
@@ -74,4 +80,5 @@ pub fn router() -> Router<AppState> {
                         .delete(issues::delete_issue),
                 ),
         )
+        .fallback_service(ServeDir::new(frontend_dist_dir).not_found_service(ServeFile::new(index)))
 }

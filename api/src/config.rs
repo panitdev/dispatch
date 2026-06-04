@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, path::PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -8,7 +8,9 @@ pub struct Config {
     pub dispatch_public_url: String,
     pub hydra_public_url: String,
     pub hydra_admin_url: String,
+    pub dispatch_api_url: Option<String>,
     pub api_port: u16,
+    pub frontend_dist_dir: PathBuf,
     pub frontend_origin: String,
     pub cors_allowed_origins: Vec<String>,
     pub snowflake_machine_id: i32,
@@ -44,11 +46,18 @@ impl Config {
                 .unwrap_or_else(|_| "http://localhost:4444".into()),
             hydra_admin_url: env::var("HYDRA_ADMIN_URL")
                 .unwrap_or_else(|_| "http://localhost:4445".into()),
+            dispatch_api_url: env::var("DISPATCH_API_URL")
+                .ok()
+                .map(|url| url.trim().to_owned())
+                .filter(|url| !url.is_empty()),
             kratos_public_url,
             api_port: env::var("API_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8080),
+            frontend_dist_dir: env::var("FRONTEND_DIST_DIR")
+                .unwrap_or_else(|_| "ui/dist".into())
+                .into(),
             frontend_origin,
             cors_allowed_origins,
             snowflake_machine_id: env::var("SNOWFLAKE_MACHINE_ID")

@@ -10,8 +10,8 @@ declare global {
 }
 
 const productionDefaults: AppConfig = {
-  apiBaseUrl: 'https://dispatch-api.panit.dev',
-  kratosPublicUrl: 'https://kratos.panit.dev',
+  apiBaseUrl: '',
+  kratosPublicUrl: '',
 }
 
 export function getAppConfig(): AppConfig {

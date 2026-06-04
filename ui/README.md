@@ -56,7 +56,7 @@ This project deploys the Vite `dist/` directory through Wrangler static assets w
 2. Authenticate: `wrangler login`
 3. Deploy: `npx wrangler deploy`
 
-Public browser config is read from `window.__ENV__` when Docker generates `env.js`, or from `VITE_API_BASE_URL` and `VITE_KRATOS_PUBLIC_URL` at build time. Production static builds default to `https://dispatch-api.panit.dev` and `https://kratos.panit.dev`.
+Public browser config is read from `window.__ENV__` when Axum serves `env.js`, or from `VITE_API_BASE_URL` and `VITE_KRATOS_PUBLIC_URL` at build time. Production static builds default to same-origin API requests. Set `DISPATCH_API_URL` at runtime only when the browser must call a non-standard API origin.
 
 Static asset deployment is configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/static-assets/.
 

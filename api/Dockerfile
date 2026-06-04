@@ -12,6 +12,18 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && cargo install cargo-chef --locked
 
+FROM oven/bun:1-debian AS ui-builder
+WORKDIR /app/ui
+
+COPY ui/package.json ui/bun.lock ./
+
+RUN --mount=type=cache,id=dispatch-ui-bun-install,target=/root/.bun/install/cache,sharing=locked \
+    bun install --frozen-lockfile
+
+COPY ui .
+
+RUN bun run build
+
 FROM chef AS planner
 
 COPY Cargo.toml Cargo.lock ./
@@ -59,6 +71,7 @@ RUN apt-get update \
     && useradd --system --uid 1001 --gid api --home-dir /app api
 
 COPY --from=builder /usr/local/bin/dispatch-api /usr/local/bin/dispatch-api
+COPY --from=ui-builder /app/ui/dist /app/ui/dist
 
 USER api
 

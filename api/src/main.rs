@@ -95,7 +95,7 @@ async fn main() {
             .allow_credentials(true)
     };
 
-    let app = routes::router()
+    let app = routes::router(&config)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state);
