@@ -1,3 +1,5 @@
+import { getAppConfig } from './config'
+
 export type ApiNowIssue = {
   id: string
   key: string
@@ -88,10 +90,8 @@ export type CreateIssueInput = {
 export type CreateIssueResponse = ApiIssue
 
 function getClientApiBaseUrl(): string {
-  return (((window as any).__ENV__?.apiBaseUrl) ?? '').replace(/\/$/, '')
+  return getAppConfig().apiBaseUrl
 }
-
-const loggedServerHosts = new Set<string>()
 
 export class ApiError extends Error {
   status: number
@@ -105,15 +105,11 @@ export class ApiError extends Error {
 
 export function isAuthError(error: unknown): error is ApiError {
   return (
-    error instanceof ApiError &&
-    (error.status === 401 || error.status === 403)
+    error instanceof ApiError && (error.status === 401 || error.status === 403)
   )
 }
 
-export function getDisplayErrorMessage(
-  error: unknown,
-  fallback: string,
-) {
+export function getDisplayErrorMessage(error: unknown, fallback: string) {
   if (isAuthError(error)) {
     return 'Your session is missing or expired. Sign in again and reload.'
   }
@@ -129,15 +125,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'application/json')
   const startedAt = performance.now()
-  const apiBaseUrl =
-    typeof window === 'undefined'
-      ? ((init as any)?._baseUrl ?? '').replace(/\/$/, '')
-      : getClientApiBaseUrl()
+  const apiBaseUrl = getClientApiBaseUrl()
   const url = `${apiBaseUrl}${path}`
-
-  if (typeof window === 'undefined') {
-    await logServerResolution(url)
-  }
 
   console.log(
     `[timing] apiFetch:start ${url} hasCookie=${headers.has('cookie')} hasAuth=${headers.has('authorization')}`,
@@ -160,9 +149,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     let message = ''
 
     if (contentType.includes('application/json')) {
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string
+      } | null
       message = payload?.error ?? ''
     } else {
       message = await response.text()
@@ -184,15 +173,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 async function apiTextFetch(path: string, init?: RequestInit): Promise<string> {
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'text/markdown')
-  const apiBaseUrl =
-    typeof window === 'undefined'
-      ? ((init as any)?._baseUrl ?? '').replace(/\/$/, '')
-      : getClientApiBaseUrl()
+  const apiBaseUrl = getClientApiBaseUrl()
   const url = `${apiBaseUrl}${path}`
-
-  if (typeof window === 'undefined') {
-    await logServerResolution(url)
-  }
 
   const response = await fetch(url, {
     ...init,
@@ -205,9 +187,9 @@ async function apiTextFetch(path: string, init?: RequestInit): Promise<string> {
     let message = ''
 
     if (contentType.includes('application/json')) {
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string
+      } | null
       message = payload?.error ?? ''
     } else {
       message = await response.text()
@@ -220,30 +202,6 @@ async function apiTextFetch(path: string, init?: RequestInit): Promise<string> {
   }
 
   return response.text()
-}
-
-async function logServerResolution(rawUrl: string) {
-  const hostname = new URL(rawUrl).hostname
-  if (loggedServerHosts.has(hostname)) {
-    return
-  }
-  loggedServerHosts.add(hostname)
-
-  try {
-    const dns = await import('node:dns/promises')
-    const results = await dns.lookup(hostname, { all: true })
-    console.log(
-      `[timing] apiFetch:resolve ${hostname} -> ${results
-        .map((result) => `${result.address}/ipv${result.family}`)
-        .join(', ')}`,
-    )
-  } catch (error) {
-    console.log(
-      `[timing] apiFetch:resolve ${hostname} failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    )
-  }
 }
 
 export function getNow(init?: RequestInit) {
@@ -264,7 +222,10 @@ export function listProjectIssues(
   init?: RequestInit,
 ) {
   const params = status ? `?status=${encodeURIComponent(status)}` : ''
-  return apiFetch<ApiIssue[]>(`/api/v1/projects/${projectId}/issues${params}`, init)
+  return apiFetch<ApiIssue[]>(
+    `/api/v1/projects/${projectId}/issues${params}`,
+    init,
+  )
 }
 
 export function listProjectLabels(projectId: string, init?: RequestInit) {
@@ -372,16 +333,19 @@ export function deleteIssue(issueId: string) {
 }
 
 export function createIssue(input: CreateIssueInput) {
-  return apiFetch<CreateIssueResponse>(`/api/v1/projects/${input.project_id}/issues`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  return apiFetch<CreateIssueResponse>(
+    `/api/v1/projects/${input.project_id}/issues`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: input.title,
+        status: input.status ?? 'draft',
+        labels: input.labels ?? [],
+        blocks: input.blocks ?? [],
+      }),
     },
-    body: JSON.stringify({
-      title: input.title,
-      status: input.status ?? 'draft',
-      labels: input.labels ?? [],
-      blocks: input.blocks ?? [],
-    }),
-  })
+  )
 }

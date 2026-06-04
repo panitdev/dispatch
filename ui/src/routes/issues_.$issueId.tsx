@@ -6,11 +6,11 @@ import {
   IssuePageError,
   IssuePageSkeleton,
 } from '../features/issues/issue-page'
-import { getIssuePageData } from '../lib/server-data'
+import { getIssuePageData } from '../lib/page-data'
 
 export const Route = createFileRoute('/issues_/$issueId')({
   loader: ({ params }) => ({
-    dataPromise: getIssuePageData({ data: { issueId: params.issueId } }),
+    dataPromise: getIssuePageData({ issueId: params.issueId }),
   }),
   component: IssuePageRoute,
   errorComponent: IssuePageRouteError,

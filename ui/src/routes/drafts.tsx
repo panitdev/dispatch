@@ -3,7 +3,7 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { DraftsPage, DraftsPageSkeleton } from '../features/drafts/drafts-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
-import { getDraftsPageData } from '../lib/server-data'
+import { getDraftsPageData } from '../lib/page-data'
 import { pageCopy } from '../data/dispatch'
 
 export const Route = createFileRoute('/drafts')({

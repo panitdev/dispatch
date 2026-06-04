@@ -9,19 +9,18 @@ import { PageHead } from '../../components/dispatch/page-head'
 import { ProjectCreateDialog } from '../../components/dispatch/ProjectCreateDialog'
 import { ProjectGlyph, StatusPill } from '../../components/dispatch/primitives'
 import { getDisplayErrorMessage } from '@/lib/api'
-import { getProjectsPageData } from '@/lib/server-data'
+import { getProjectsPageData } from '@/lib/page-data'
 
 import { formatStatusLabel, pageCopy } from '../../data/dispatch'
 
 import type { ApiIssue, ApiProject } from '@/lib/api'
-import type { ProjectsPageData } from '@/lib/server-data'
-
+import type { ProjectsPageData } from '@/lib/page-data'
 
 export function ProjectsPage({ data }: { data: ProjectsPageData }) {
   const [projects, setProjects] = useState<ApiProject[]>(data.projects)
-  const [issuesByProjectId, setIssuesByProjectId] = useState<Record<string, ApiIssue[]>>(
-    data.issuesByProjectId,
-  )
+  const [issuesByProjectId, setIssuesByProjectId] = useState<
+    Partial<Record<string, ApiIssue[]>>
+  >(data.issuesByProjectId)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -87,15 +86,20 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
                   {project.name}
                 </h2>
                 <p className="m-0 mt-px text-xs text-[var(--dispatch-text-tertiary)]">
-                  {activeIssueCount(issuesByProjectId[project.id] ?? [])} active issues
+                  {activeIssueCount(issuesByProjectId[project.id] ?? [])} active
+                  issues
                 </p>
               </div>
             </div>
             <p className="m-0 text-[13px] leading-[1.55] text-[var(--dispatch-text-tertiary)]">
-              {depth > 0 ? `Sub-project under level ${depth}.` : 'Top-level project.'}
+              {depth > 0
+                ? `Sub-project under level ${depth}.`
+                : 'Top-level project.'}
             </p>
             <div className="flex flex-wrap gap-2">
-              <StatusPill status={`${issuesByProjectId[project.id]?.length ?? 0} total`} />
+              <StatusPill
+                status={`${issuesByProjectId[project.id]?.length ?? 0} total`}
+              />
               {project.sub_projects.length > 0 ? (
                 <StatusPill status={`${project.sub_projects.length} child`} />
               ) : null}
@@ -109,22 +113,21 @@ export function ProjectsPage({ data }: { data: ProjectsPageData }) {
                   No issues yet.
                 </p>
               ) : (
-                (issuesByProjectId[project.id] ?? []).slice(0, 4).map((issue) => (
-                  <div
-                    className="flex items-center gap-2.5"
-                    key={issue.id}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px] font-medium text-[var(--dispatch-text-primary)]">
-                        {issue.title}
+                (issuesByProjectId[project.id] ?? [])
+                  .slice(0, 4)
+                  .map((issue) => (
+                    <div className="flex items-center gap-2.5" key={issue.id}>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-medium text-[var(--dispatch-text-primary)]">
+                          {issue.title}
+                        </div>
+                        <div className="mt-0.5 truncate text-[12px] text-[var(--dispatch-text-tertiary)]">
+                          {issue.key}
+                        </div>
                       </div>
-                      <div className="mt-0.5 truncate text-[12px] text-[var(--dispatch-text-tertiary)]">
-                        {issue.key}
-                      </div>
+                      <StatusPill status={formatStatusLabel(issue.status)} />
                     </div>
-                    <StatusPill status={formatStatusLabel(issue.status)} />
-                  </div>
-                ))
+                  ))
               )}
             </div>
           </Link>
@@ -146,7 +149,9 @@ export function ProjectsPageSkeleton() {
       <PageHead
         title={pageCopy.Projects.title}
         subtitle={pageCopy.Projects.subtitle}
-        action={<Skeleton className="h-9 w-28 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />}
+        action={
+          <Skeleton className="h-9 w-28 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
+        }
       />
       <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
@@ -186,10 +191,15 @@ export function ProjectsPageSkeleton() {
 }
 
 function activeIssueCount(issues: ApiIssue[]) {
-  return issues.filter((issue) => issue.status === 'doing' || issue.status === 'next').length
+  return issues.filter(
+    (issue) => issue.status === 'doing' || issue.status === 'next',
+  ).length
 }
 
-function flattenProjects(projects: ApiProject[], depth = 0): Array<{ project: ApiProject; depth: number }> {
+function flattenProjects(
+  projects: ApiProject[],
+  depth = 0,
+): Array<{ project: ApiProject; depth: number }> {
   return projects.flatMap((project) => [
     { project, depth },
     ...flattenProjects(project.sub_projects, depth + 1),

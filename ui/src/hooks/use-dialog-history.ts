@@ -8,7 +8,7 @@ import type { DialogEntry } from '@/lib/dialog-history'
  *
  * While `open` is true on a mobile viewport, a dummy history entry backs the
  * dialog so the browser back button closes it (via `onClose`) instead of
- * leaving the app. On desktop / SSR this is an inert no-op.
+ * leaving the app. On desktop this is an inert no-op.
  *
  * Pass a stable intent for `onClose` — typically `() => onOpenChange(false)`.
  */

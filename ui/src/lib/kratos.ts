@@ -1,5 +1,7 @@
+import { getAppConfig } from './config'
+
 function getKratosPublicUrl(): string {
-  return (((window as any).__ENV__?.kratosPublicUrl) ?? '').replace(/\/$/, '')
+  return getAppConfig().kratosPublicUrl
 }
 
 export type AuthStatus = 'loading' | 'authed' | 'unauthed'

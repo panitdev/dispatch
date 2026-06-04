@@ -6,11 +6,11 @@ import {
   ProjectPageSkeleton,
 } from '../features/projects/project-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
-import { getProjectPageData } from '../lib/server-data'
+import { getProjectPageData } from '../lib/page-data'
 
 export const Route = createFileRoute('/projects_/$projectId')({
   loader: ({ params }) => ({
-    dataPromise: getProjectPageData({ data: { projectId: params.projectId } }),
+    dataPromise: getProjectPageData({ projectId: params.projectId }),
   }),
   component: ProjectPageRoute,
   errorComponent: ProjectPageRouteError,

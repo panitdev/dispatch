@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Share2, SlidersHorizontal, Filter, MoreHorizontal, Star, Trash2, Plus, Pencil } from 'lucide-react'
+import {
+  Share2,
+  SlidersHorizontal,
+  Filter,
+  MoreHorizontal,
+  Star,
+  Trash2,
+  Plus,
+  Pencil,
+} from 'lucide-react'
 import { StatusCircle } from '../../components/dispatch/primitives'
 import { useRouter } from '@tanstack/react-router'
 
@@ -29,7 +38,7 @@ import {
 import { toast } from 'sonner'
 
 import type { ApiIssue, ApiIssueLabel, ApiProject } from '@/lib/api'
-import type { ProjectPageData } from '@/lib/server-data'
+import type { ProjectPageData } from '@/lib/page-data'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -41,9 +50,13 @@ type MainTab = 'issues' | 'settings'
 function filterIssues(issues: ApiIssue[], filter: FilterTab): ApiIssue[] {
   switch (filter) {
     case 'active':
-      return issues.filter((i) => ['doing', 'next'].includes(i.status.toLowerCase()))
+      return issues.filter((i) =>
+        ['doing', 'next'].includes(i.status.toLowerCase()),
+      )
     case 'backlog':
-      return issues.filter((i) => ['todo', 'backlog'].includes(i.status.toLowerCase()))
+      return issues.filter((i) =>
+        ['todo', 'backlog'].includes(i.status.toLowerCase()),
+      )
     case 'drafts':
       return issues.filter((i) => i.status.toLowerCase() === 'draft')
     default:
@@ -51,7 +64,15 @@ function filterIssues(issues: ApiIssue[], filter: FilterTab): ApiIssue[] {
   }
 }
 
-const STATUS_ORDER = ['doing', 'next', 'draft', 'todo', 'backlog', 'done', 'cancelled']
+const STATUS_ORDER = [
+  'doing',
+  'next',
+  'draft',
+  'todo',
+  'backlog',
+  'done',
+  'cancelled',
+]
 
 function getStatusDisplayName(status: string): string {
   const map: Record<string, string> = {
@@ -66,9 +87,12 @@ function getStatusDisplayName(status: string): string {
   return map[status] ?? status.charAt(0).toUpperCase() + status.slice(1)
 }
 
-function groupAndSortIssues(issues: ApiIssue[]): Array<{ status: string; issues: ApiIssue[] }> {
+function groupAndSortIssues(
+  issues: ApiIssue[],
+): Array<{ status: string; issues: ApiIssue[] }> {
   const sorted = [...issues].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
   const groups = new Map<string, ApiIssue[]>()
   for (const issue of sorted) {
@@ -91,7 +115,20 @@ function groupAndSortIssues(issues: ApiIssue[]): Array<{ status: string; issues:
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMins / 60)
@@ -150,20 +187,18 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
   const filteredLengthRef = useRef(filteredIssues.length)
   filteredLengthRef.current = filteredIssues.length
 
-
   // Infinite scroll via IntersectionObserver
-  const handleSentinel = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0]?.isIntersecting && hasMoreRef.current) {
-        setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredLengthRef.current))
-      }
-    },
-    [],
-  )
+  const handleSentinel = useCallback((entries: IntersectionObserverEntry[]) => {
+    if (entries[0]?.isIntersecting && hasMoreRef.current) {
+      setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredLengthRef.current))
+    }
+  }, [])
 
   useEffect(() => {
     if (!sentinelRef.current) return
-    const observer = new IntersectionObserver(handleSentinel, { threshold: 0.1 })
+    const observer = new IntersectionObserver(handleSentinel, {
+      threshold: 0.1,
+    })
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [handleSentinel])
@@ -218,10 +253,16 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
 
       {/* ── Issues / Settings tabs ────────────────────────────────────────── */}
       <div className="flex items-end gap-0 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10">
-        <TabItem active={mainTab === 'issues'} onClick={() => setMainTab('issues')}>
+        <TabItem
+          active={mainTab === 'issues'}
+          onClick={() => setMainTab('issues')}
+        >
           Issues
         </TabItem>
-        <TabItem active={mainTab === 'settings'} onClick={() => setMainTab('settings')}>
+        <TabItem
+          active={mainTab === 'settings'}
+          onClick={() => setMainTab('settings')}
+        >
           Settings
         </TabItem>
       </div>
@@ -335,7 +376,8 @@ export function ProjectPage({ data }: { data: ProjectPageData }) {
               </div>
             ) : filteredIssues.length > 0 ? (
               <div className="py-5 text-center text-[12px] text-[var(--dispatch-text-quaternary)]">
-                {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
+                {filteredIssues.length} issue
+                {filteredIssues.length !== 1 ? 's' : ''}
               </div>
             ) : null}
           </div>
@@ -459,7 +501,11 @@ function ProjectSettingsTab({ project }: { project: ApiProject }) {
                 Delete this project
               </p>
               <p className="mt-0.5 text-[12.5px] text-[var(--dispatch-text-tertiary)]">
-                Permanently delete <span className="font-medium text-[var(--dispatch-text-secondary)]">{project.name}</span> and all its issues. This cannot be undone.
+                Permanently delete{' '}
+                <span className="font-medium text-[var(--dispatch-text-secondary)]">
+                  {project.name}
+                </span>{' '}
+                and all its issues. This cannot be undone.
               </p>
             </div>
             <Button
@@ -523,7 +569,9 @@ function LabelsSection({ projectId }: { projectId: string }) {
     setIsAdding(false)
     setEditingId(label.id)
     setFormName(label.name)
-    setFormColor(LABEL_COLORS.includes(label.color) ? label.color : LABEL_COLORS[0])
+    setFormColor(
+      LABEL_COLORS.includes(label.color) ? label.color : LABEL_COLORS[0],
+    )
   }
 
   function cancelForm() {
@@ -613,7 +661,10 @@ function LabelsSection({ projectId }: { projectId: string }) {
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); handleSave() }
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSave()
+                  }
                   if (e.key === 'Escape') cancelForm()
                 }}
                 placeholder="feature"
@@ -764,7 +815,11 @@ function ProjectDeleteDialog({
         <DialogHeader>
           <DialogTitle>Delete project</DialogTitle>
           <DialogDescription>
-            This will permanently delete <strong className="text-[var(--dispatch-text-primary)]">{project.name}</strong> and all of its issues. This action cannot be undone.
+            This will permanently delete{' '}
+            <strong className="text-[var(--dispatch-text-primary)]">
+              {project.name}
+            </strong>{' '}
+            and all of its issues. This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
@@ -780,7 +835,11 @@ function ProjectDeleteDialog({
         >
           <div className="space-y-1.5">
             <p className="text-[12.5px] text-[var(--dispatch-text-secondary)]">
-              Type <span className="font-semibold text-[var(--dispatch-text-primary)]">{project.name}</span> to confirm.
+              Type{' '}
+              <span className="font-semibold text-[var(--dispatch-text-primary)]">
+                {project.name}
+              </span>{' '}
+              to confirm.
             </p>
             <AnimatedField
               id="delete-confirm-name"
@@ -845,10 +904,11 @@ function TabItem({
     <button
       type="button"
       onClick={onClick}
-      className={`relative cursor-pointer px-1 pb-2.5 pt-1 text-[13.5px] font-medium transition-colors mr-5 ${active
-        ? 'text-[var(--dispatch-text-primary)] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:rounded-t-full after:bg-[var(--dispatch-cobalt-bright)]'
-        : 'text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-secondary)]'
-        }`}
+      className={`relative cursor-pointer px-1 pb-2.5 pt-1 text-[13.5px] font-medium transition-colors mr-5 ${
+        active
+          ? 'text-[var(--dispatch-text-primary)] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:rounded-t-full after:bg-[var(--dispatch-cobalt-bright)]'
+          : 'text-[var(--dispatch-text-tertiary)] hover:text-[var(--dispatch-text-secondary)]'
+      }`}
     >
       {children}
     </button>
@@ -870,17 +930,19 @@ function FilterTabItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex cursor-pointer items-center gap-1.5 rounded-[var(--dispatch-r-md)] px-3 py-[5px] text-[13px] font-medium transition-colors ${active
-        ? 'bg-[var(--dispatch-bg-surface)] text-[var(--dispatch-text-primary)] shadow-[0_0_0_1px_var(--dispatch-border-soft)_inset]'
-        : 'text-[var(--dispatch-text-tertiary)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-secondary)]'
-        }`}
+      className={`flex cursor-pointer items-center gap-1.5 rounded-[var(--dispatch-r-md)] px-3 py-[5px] text-[13px] font-medium transition-colors ${
+        active
+          ? 'bg-[var(--dispatch-bg-surface)] text-[var(--dispatch-text-primary)] shadow-[0_0_0_1px_var(--dispatch-border-soft)_inset]'
+          : 'text-[var(--dispatch-text-tertiary)] hover:bg-[var(--dispatch-bg-hover)] hover:text-[var(--dispatch-text-secondary)]'
+      }`}
     >
       {children}
       <span
-        className={`rounded-full px-[6px] py-px text-[11px] font-semibold leading-[1.4] tabular-nums ${active
-          ? 'bg-[var(--dispatch-cobalt-12)] text-[var(--dispatch-cobalt-bright)]'
-          : 'bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-quaternary)]'
-          }`}
+        className={`rounded-full px-[6px] py-px text-[11px] font-semibold leading-[1.4] tabular-nums ${
+          active
+            ? 'bg-[var(--dispatch-cobalt-12)] text-[var(--dispatch-cobalt-bright)]'
+            : 'bg-[var(--dispatch-bg-elevated)] text-[var(--dispatch-text-quaternary)]'
+        }`}
       >
         {count}
       </span>
@@ -919,7 +981,10 @@ export function ProjectPageSkeleton() {
       {/* Filter bar — py-2.5, filter buttons render at 31px */}
       <div className="flex items-center gap-1.5 border-b border-[var(--dispatch-border-soft)] px-[18px] md:px-10 py-2.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[31px] w-20 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]" />
+          <Skeleton
+            key={i}
+            className="h-[31px] w-20 rounded-[var(--dispatch-r-md)] bg-[var(--dispatch-bg-hover)]"
+          />
         ))}
         <div className="ml-auto flex items-center gap-1">
           <Skeleton className="h-6 w-6 rounded-[var(--dispatch-r-sm)] bg-[var(--dispatch-bg-hover)]" />
@@ -930,7 +995,10 @@ export function ProjectPageSkeleton() {
       {/* Issue rows — px-6 py-[7px] gap-2; row height=46px driven by the h-8 action button */}
       <div>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-2 border-b border-[var(--dispatch-border-soft)] px-6 py-[7px]">
+          <div
+            key={i}
+            className="flex items-center gap-2 border-b border-[var(--dispatch-border-soft)] px-6 py-[7px]"
+          >
             <Skeleton className="h-2.5 w-3 shrink-0 bg-[var(--dispatch-bg-hover)]" />
             <Skeleton className="h-3.5 w-[72px] shrink-0 bg-[var(--dispatch-bg-hover)]" />
             <Skeleton className="h-3.5 w-3.5 shrink-0 rounded-full bg-[var(--dispatch-bg-hover)]" />

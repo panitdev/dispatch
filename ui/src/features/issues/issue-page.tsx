@@ -1,19 +1,17 @@
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  Calendar,
-  User,
-} from 'lucide-react'
+import { AlertCircle, ArrowRight, BookOpen, Calendar, User } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatStatusLabel } from '@/data/dispatch'
 
-import { ProjectGlyph, StatusCircle, StatusPill } from '../../components/dispatch/primitives'
+import {
+  ProjectGlyph,
+  StatusCircle,
+  StatusPill,
+} from '../../components/dispatch/primitives'
 
 import type React from 'react'
 import type { ApiIssue, ApiProject } from '@/lib/api'
-import type { IssuePageData } from '@/lib/server-data'
+import type { IssuePageData } from '@/lib/page-data'
 
 // ─── Priority helpers ─────────────────────────────────────────────────────────
 
@@ -27,21 +25,32 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 function PriorityDots({ priority }: { priority: number }) {
   const heights =
-    priority === 1 ? [10, 10, 10]
-    : priority === 2 ? [10, 7, 3]
-    : priority === 3 ? [6, 6, 3]
-    : priority === 4 ? [3, 3, 3]
-    : [3, 6, 10]
+    priority === 1
+      ? [10, 10, 10]
+      : priority === 2
+        ? [10, 7, 3]
+        : priority === 3
+          ? [6, 6, 3]
+          : priority === 4
+            ? [3, 3, 3]
+            : [3, 6, 10]
 
   const hasPriority = priority > 0
-  const color = priority === 1
-    ? 'var(--dispatch-rust)'
-    : hasPriority
-      ? 'var(--dispatch-text-secondary)'
-      : 'var(--dispatch-text-quaternary)'
+  const color =
+    priority === 1
+      ? 'var(--dispatch-rust)'
+      : hasPriority
+        ? 'var(--dispatch-text-secondary)'
+        : 'var(--dispatch-text-quaternary)'
 
   return (
-    <svg width="12" height="10" viewBox="0 0 12 10" className="shrink-0" aria-hidden="true">
+    <svg
+      width="12"
+      height="10"
+      viewBox="0 0 12 10"
+      className="shrink-0"
+      aria-hidden="true"
+    >
       {heights.map((h, i) => (
         <rect
           key={i}
@@ -61,13 +70,35 @@ function PriorityDots({ priority }: { priority: number }) {
 // ─── Label pill ───────────────────────────────────────────────────────────────
 
 function labelColorStyle(label: string): React.CSSProperties {
-  const hash = label.split('').reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) & 0xffff, 0)
+  const hash = label
+    .split('')
+    .reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) & 0xffff, 0)
   const palettes: React.CSSProperties[] = [
-    { background: 'var(--dispatch-cobalt-12)', borderColor: 'var(--dispatch-cobalt-30)', color: 'var(--dispatch-cobalt-bright)' },
-    { background: 'var(--dispatch-green-12)', borderColor: 'var(--dispatch-green-30)', color: 'var(--dispatch-green-text)' },
-    { background: 'var(--dispatch-amber-12)', borderColor: 'var(--dispatch-amber-30)', color: 'var(--dispatch-amber)' },
-    { background: 'var(--dispatch-rust-12)', borderColor: 'var(--dispatch-rust-30)', color: 'var(--dispatch-rust)' },
-    { background: 'var(--dispatch-bg-elevated)', borderColor: 'var(--dispatch-border)', color: 'var(--dispatch-text-secondary)' },
+    {
+      background: 'var(--dispatch-cobalt-12)',
+      borderColor: 'var(--dispatch-cobalt-30)',
+      color: 'var(--dispatch-cobalt-bright)',
+    },
+    {
+      background: 'var(--dispatch-green-12)',
+      borderColor: 'var(--dispatch-green-30)',
+      color: 'var(--dispatch-green-text)',
+    },
+    {
+      background: 'var(--dispatch-amber-12)',
+      borderColor: 'var(--dispatch-amber-30)',
+      color: 'var(--dispatch-amber)',
+    },
+    {
+      background: 'var(--dispatch-rust-12)',
+      borderColor: 'var(--dispatch-rust-30)',
+      color: 'var(--dispatch-rust)',
+    },
+    {
+      background: 'var(--dispatch-bg-elevated)',
+      borderColor: 'var(--dispatch-border)',
+      color: 'var(--dispatch-text-secondary)',
+    },
   ]
   return palettes[hash % palettes.length]
 }
@@ -240,9 +271,7 @@ export function IssuePage({ data }: { data: IssuePageData }) {
 
         <PropertyRow label="Labels">
           {issue.labels.length > 0 ? (
-            issue.labels.map((label) => (
-              <LabelPill key={label} label={label} />
-            ))
+            issue.labels.map((label) => <LabelPill key={label} label={label} />)
           ) : (
             <span className="text-[13px] text-[var(--dispatch-text-quaternary)]">
               None
@@ -316,7 +345,10 @@ export function IssuePageError({ message }: { message: string }) {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="flex flex-col items-center gap-3 text-center text-[13px] text-[var(--dispatch-text-tertiary)]">
-        <AlertCircle size={22} className="text-[var(--dispatch-text-quaternary)]" />
+        <AlertCircle
+          size={22}
+          className="text-[var(--dispatch-text-quaternary)]"
+        />
         <p className="m-0">{message}</p>
       </div>
     </div>

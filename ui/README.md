@@ -1,4 +1,4 @@
-Welcome to your new TanStack Start app! 
+Welcome to the Dispatch frontend.
 
 # Getting Started
 
@@ -40,7 +40,6 @@ If you prefer not to use Tailwind CSS:
 
 ## Linting & Formatting
 
-
 This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
 
 ```bash
@@ -49,18 +48,17 @@ bun --bun run format
 bun --bun run check
 ```
 
+## Deploy to Cloudflare Workers Static Assets
 
-## Deploy to Cloudflare Workers
-
-This project uses the Cloudflare Vite plugin (configured in `vite.config.ts`) and `wrangler.jsonc`:
+This project deploys the Vite `dist/` directory through Wrangler static assets with SPA fallback:
 
 1. Install Wrangler: `npm install -g wrangler`
 2. Authenticate: `wrangler login`
 3. Deploy: `npx wrangler deploy`
 
-For production env vars, run `wrangler secret put MY_VAR` for each secret listed in `.env.example`. Public (non-secret) vars go in `wrangler.jsonc` under `vars`.
+Public browser config is read from `window.__ENV__` when Docker generates `env.js`, or from `VITE_API_BASE_URL` and `VITE_KRATOS_PUBLIC_URL` at build time. Production static builds default to `https://dispatch-api.panit.dev` and `https://kratos.panit.dev`.
 
-KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
+Static asset deployment is configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/static-assets/.
 
 ## GitHub Actions CD
 
@@ -71,9 +69,7 @@ Configure these repository secrets before enabling the workflow:
 - `CLOUDFLARE_API_TOKEN`: API token with permission to deploy Workers for this account.
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID for the target Workers account.
 
-The workflow runs `bun install --frozen-lockfile` and then `bun run deploy` from `ui/`, which builds the app and publishes the Worker defined in `wrangler.jsonc`.
-
-
+The workflow runs `bun install --frozen-lockfile` and then `bun run deploy` from `ui/`, which builds the app and publishes the static assets defined in `wrangler.jsonc`.
 
 ## Routing
 
@@ -92,7 +88,7 @@ Now that you have two routes you can use a `Link` component to navigate between 
 To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
 
 ```tsx
-import { Link } from "@tanstack/react-router";
+import { Link } from '@tanstack/react-router'
 ```
 
 Then anywhere in your JSX you can use it like so:
@@ -107,84 +103,11 @@ More information on the `Link` component can be found in the [Link documentation
 
 ### Using A Layout
 
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
+The app shell is static HTML in `index.html`, and React mounts from `src/main.tsx`.
+The shared route layout lives in `src/routes/__root.tsx`; route content appears
+where the root route renders `<Outlet />`.
 
 More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
 
 ## Data Fetching
 

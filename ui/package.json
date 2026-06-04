@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@cloudflare/vite-plugin": "^1.26.0",
     "@fontsource-variable/geist": "^5.2.9",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
@@ -25,8 +24,6 @@
     "@tanstack/react-query-devtools": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
-    "@tanstack/react-router-ssr-query": "latest",
-    "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "@tiptap/core": "^3.23.6",
     "@tiptap/extension-placeholder": "^3.23.6",

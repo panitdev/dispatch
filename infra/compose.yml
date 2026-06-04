@@ -2,6 +2,9 @@ services:
   ui:
     image: ${IMAGE_NAMESPACE:-ghcr.io/panitdev/dispatch}/ui:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+      KRATOS_PUBLIC_URL: ${KRATOS_PUBLIC_URL:?KRATOS_PUBLIC_URL is required}
     ports:
       - "${UI_PORT:-3000}:80"
     depends_on:

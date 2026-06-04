@@ -7,7 +7,7 @@ import {
 } from '../features/projects/projects-page'
 import { RouteErrorState } from '../components/dispatch/route-error-state'
 import { pageCopy } from '../data/dispatch'
-import { getProjectsPageData } from '../lib/server-data'
+import { getProjectsPageData } from '../lib/page-data'
 
 export const Route = createFileRoute('/projects')({
   loader: () => ({ dataPromise: getProjectsPageData() }),

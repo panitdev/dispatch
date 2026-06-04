@@ -62,7 +62,7 @@ function handlePopState(): void {
 
 /**
  * Register an opened ephemeral dialog and push its dummy history entry. Returns
- * the entry handle (used to close it later), or `null` on desktop / SSR where no
+ * the entry handle (used to close it later), or `null` on desktop where no
  * history bookkeeping happens.
  */
 export function pushDialog(onClose: () => void): DialogEntry | null {
