@@ -1,6 +1,6 @@
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, patch, post},
 };
 
 use crate::mcp;
@@ -58,7 +58,14 @@ pub fn router() -> Router<AppState> {
                     "/projects/{id}/issues",
                     get(issues::list_project_issues).post(issues::create_issue),
                 )
-                .route("/projects/{id}/labels", get(projects::list_project_labels))
+                .route(
+                    "/projects/{id}/labels",
+                    get(projects::list_project_labels).post(projects::create_project_label),
+                )
+                .route(
+                    "/projects/{id}/labels/{label_id}",
+                    patch(projects::update_project_label).delete(projects::delete_project_label),
+                )
                 .route("/issues/{id}/body.md", get(issues::get_issue_body_markdown))
                 .route(
                     "/issues/{id}",

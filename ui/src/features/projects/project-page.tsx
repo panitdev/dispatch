@@ -21,6 +21,9 @@ import {
   updateProject,
   deleteProject,
   listProjectLabels,
+  createProjectLabel,
+  updateProjectLabel,
+  deleteProjectLabel,
   getDisplayErrorMessage,
 } from '@/lib/api'
 import { toast } from 'sonner'
@@ -500,6 +503,8 @@ function LabelsSection({ projectId }: { projectId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formName, setFormName] = useState('')
   const [formColor, setFormColor] = useState(LABEL_COLORS[0])
+  const [isSavingLabel, setIsSavingLabel] = useState(false)
+  const [deletingLabelId, setDeletingLabelId] = useState<string | null>(null)
 
   useEffect(() => {
     listProjectLabels(projectId)
@@ -528,27 +533,49 @@ function LabelsSection({ projectId }: { projectId: string }) {
     setFormColor(LABEL_COLORS[0])
   }
 
-  function handleSave() {
+  async function handleSave() {
     const trimmed = formName.trim()
     if (!trimmed) return
-    if (isAdding) {
-      setLabels((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), project_id: projectId, name: trimmed, color: formColor },
-      ])
-      setIsAdding(false)
-    } else if (editingId) {
-      setLabels((prev) =>
-        prev.map((l) => (l.id === editingId ? { ...l, name: trimmed, color: formColor } : l)),
-      )
-      setEditingId(null)
+
+    setIsSavingLabel(true)
+    try {
+      if (isAdding) {
+        const created = await createProjectLabel(projectId, {
+          name: trimmed,
+          color: formColor,
+        })
+        setLabels((prev) => [...prev, created])
+        setIsAdding(false)
+      } else if (editingId) {
+        const updated = await updateProjectLabel(projectId, editingId, {
+          name: trimmed,
+          color: formColor,
+        })
+        setLabels((prev) =>
+          prev.map((label) => (label.id === editingId ? updated : label)),
+        )
+        setEditingId(null)
+      }
+      setFormName('')
+      setFormColor(LABEL_COLORS[0])
+    } catch (err) {
+      toast.error(getDisplayErrorMessage(err, 'Failed to save label.'))
+    } finally {
+      setIsSavingLabel(false)
     }
-    setFormName('')
-    setFormColor(LABEL_COLORS[0])
   }
 
-  function handleDelete(id: string) {
-    setLabels((prev) => prev.filter((l) => l.id !== id))
+  async function handleDelete(id: string) {
+    setDeletingLabelId(id)
+    try {
+      await deleteProjectLabel(projectId, id)
+      setLabels((prev) => prev.filter((label) => label.id !== id))
+      if (editingId === id) cancelForm()
+    } catch (err) {
+      toast.error(getDisplayErrorMessage(err, 'Failed to delete label.'))
+    } finally {
+      setDeletingLabelId(null)
+    }
   }
 
   const showForm = isAdding || editingId !== null
@@ -612,7 +639,14 @@ function LabelsSection({ projectId }: { projectId: string }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" size="sm" onClick={handleSave} disabled={!formName.trim()}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={!formName.trim()}
+                loading={isSavingLabel}
+                loadingText="Saving"
+              >
                 Save
               </Button>
               <Button
@@ -667,7 +701,8 @@ function LabelsSection({ projectId }: { projectId: string }) {
                 <button
                   type="button"
                   onClick={() => handleDelete(label.id)}
-                  className="text-[var(--dispatch-text-quaternary)] transition-colors hover:text-[var(--dispatch-rust)]"
+                  disabled={deletingLabelId === label.id}
+                  className="text-[var(--dispatch-text-quaternary)] transition-colors hover:text-[var(--dispatch-rust)] disabled:pointer-events-none disabled:opacity-50"
                   aria-label="Delete label"
                 >
                   <Trash2 size={13} />

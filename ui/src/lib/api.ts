@@ -271,6 +271,48 @@ export function listProjectLabels(projectId: string, init?: RequestInit) {
   return apiFetch<ApiIssueLabel[]>(`/api/v1/projects/${projectId}/labels`, init)
 }
 
+export type CreateProjectLabelInput = {
+  name: string
+  color: string
+}
+
+export function createProjectLabel(
+  projectId: string,
+  input: CreateProjectLabelInput,
+) {
+  return apiFetch<ApiIssueLabel>(`/api/v1/projects/${projectId}/labels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+}
+
+export type UpdateProjectLabelInput = {
+  name?: string
+  color?: string
+}
+
+export function updateProjectLabel(
+  projectId: string,
+  labelId: string,
+  input: UpdateProjectLabelInput,
+) {
+  return apiFetch<ApiIssueLabel>(
+    `/api/v1/projects/${projectId}/labels/${labelId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  )
+}
+
+export function deleteProjectLabel(projectId: string, labelId: string) {
+  return apiFetch<void>(`/api/v1/projects/${projectId}/labels/${labelId}`, {
+    method: 'DELETE',
+  })
+}
+
 export function getIssue(issueId: string, init?: RequestInit) {
   return apiFetch<ApiIssue>(`/api/v1/issues/${issueId}`, init)
 }

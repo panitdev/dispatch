@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::schema::{labels, states, teams};
 
@@ -25,6 +25,25 @@ pub struct NewLabel {
     pub project_id: i64,
     pub name: String,
     pub color: String,
+}
+
+#[derive(AsChangeset, Default)]
+#[diesel(table_name = labels)]
+pub struct LabelChangeset {
+    pub name: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateLabelRequest {
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Deserialize, Default)]
+pub struct UpdateLabelRequest {
+    pub name: Option<String>,
+    pub color: Option<String>,
 }
 
 #[derive(Serialize)]

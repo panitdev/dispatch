@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use chrono::Utc;
 use diesel::prelude::*;
@@ -11,10 +11,12 @@ use std::time::Instant;
 use crate::{
     auth::kratos::KratosIdentity,
     error::{ApiResult, AppError},
-    models::label::{Label, LabelResponse, NewLabel},
+    models::label::{
+        CreateLabelRequest, Label, LabelChangeset, LabelResponse, NewLabel, UpdateLabelRequest,
+    },
     models::project::{
-        build_project_tree, CreateProjectRequest, NewProject, Project, ProjectChangeset,
-        ProjectResponse, UpdateProjectRequest,
+        CreateProjectRequest, NewProject, Project, ProjectChangeset, ProjectResponse,
+        UpdateProjectRequest, build_project_tree,
     },
     schema::{labels, projects},
     state::AppState,
@@ -135,6 +137,119 @@ pub async fn list_project_labels(
         .await?;
 
     Ok(Json(rows.into_iter().map(LabelResponse::from).collect()))
+}
+
+pub async fn create_project_label(
+    _identity: KratosIdentity,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<CreateLabelRequest>,
+) -> ApiResult<(StatusCode, Json<LabelResponse>)> {
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let name = body.name.trim().to_owned();
+    let color = body.color.trim().to_owned();
+
+    if name.is_empty() {
+        return Err(AppError::BadRequest("label name is required".into()));
+    }
+
+    if color.is_empty() {
+        return Err(AppError::BadRequest("label color is required".into()));
+    }
+
+    let mut conn = state.db.get().await?;
+    let project: Project = projects::table
+        .find(project_id)
+        .select(Project::as_select())
+        .first(&mut conn)
+        .await?;
+
+    let new_label = NewLabel {
+        id: state.next_id(),
+        team_id: project.team_id.unwrap_or(1),
+        project_id: project.id,
+        name,
+        color,
+    };
+
+    let created: Label = diesel::insert_into(labels::table)
+        .values(&new_label)
+        .get_result(&mut conn)
+        .await?;
+
+    Ok((StatusCode::CREATED, Json(LabelResponse::from(created))))
+}
+
+pub async fn update_project_label(
+    _identity: KratosIdentity,
+    State(state): State<AppState>,
+    Path((id, label_id)): Path<(String, String)>,
+    Json(body): Json<UpdateLabelRequest>,
+) -> ApiResult<Json<LabelResponse>> {
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let label_id: i64 = label_id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid label_id".into()))?;
+
+    let name = body.name.map(|value| value.trim().to_owned());
+    let color = body.color.map(|value| value.trim().to_owned());
+
+    if name.as_ref().is_some_and(|value| value.is_empty()) {
+        return Err(AppError::BadRequest("label name is required".into()));
+    }
+
+    if color.as_ref().is_some_and(|value| value.is_empty()) {
+        return Err(AppError::BadRequest("label color is required".into()));
+    }
+
+    if name.is_none() && color.is_none() {
+        return Err(AppError::BadRequest("no label changes provided".into()));
+    }
+
+    let changeset = LabelChangeset { name, color };
+    let mut conn = state.db.get().await?;
+    let updated: Label = diesel::update(
+        labels::table
+            .filter(labels::id.eq(label_id))
+            .filter(labels::project_id.eq(project_id)),
+    )
+    .set(changeset)
+    .get_result(&mut conn)
+    .await?;
+
+    Ok(Json(LabelResponse::from(updated)))
+}
+
+pub async fn delete_project_label(
+    _identity: KratosIdentity,
+    State(state): State<AppState>,
+    Path((id, label_id)): Path<(String, String)>,
+) -> ApiResult<StatusCode> {
+    let project_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid id".into()))?;
+    let label_id: i64 = label_id
+        .parse()
+        .map_err(|_| AppError::BadRequest("invalid label_id".into()))?;
+
+    let mut conn = state.db.get().await?;
+    let deleted = diesel::delete(
+        labels::table
+            .filter(labels::id.eq(label_id))
+            .filter(labels::project_id.eq(project_id)),
+    )
+    .execute(&mut conn)
+    .await?;
+
+    if deleted == 0 {
+        Err(AppError::NotFound)
+    } else {
+        Ok(StatusCode::NO_CONTENT)
+    }
 }
 
 pub async fn get_project(
