@@ -1,5 +1,11 @@
 import { getAppConfig } from './config'
 
+export type ApiHealth = {
+  status: string
+  version: string
+  commit_hash: string
+}
+
 export type ApiNowIssue = {
   id: string
   key: string
@@ -202,6 +208,12 @@ async function apiTextFetch(path: string, init?: RequestInit): Promise<string> {
   }
 
   return response.text()
+}
+
+export async function getHealth(init?: RequestInit): Promise<ApiHealth> {
+  const apiBaseUrl = getAppConfig().apiBaseUrl
+  const response = await fetch(`${apiBaseUrl}/health`, init)
+  return response.json() as Promise<ApiHealth>
 }
 
 export function getNow(init?: RequestInit) {
