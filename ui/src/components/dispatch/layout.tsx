@@ -4,19 +4,8 @@ import { useEffect, useState } from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
 
 import { useDialogHistory } from '@/hooks/use-dialog-history'
-
-function useIsDesktop(breakpoint = 1024): boolean {
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(`(min-width: ${breakpoint}px)`).matches
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`)
-    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [breakpoint])
-  return isDesktop
-}
+import { detachTopDialog } from '@/lib/dialog-history'
+import { PANIT_DEFAULT_EASE } from '@/lib/motion'
 
 import { AuthGuardDialog } from './AuthGuardDialog'
 import { CommandPalette } from './command-palette'
@@ -29,10 +18,24 @@ import { IssueCreateDialog } from './IssueCreateDialog'
 import { ProjectCreateDialog } from './ProjectCreateDialog'
 import { Sidebar } from './sidebar'
 import { TopBar } from './top-bar'
-import { PANIT_DEFAULT_EASE } from '@/lib/motion'
 
 import type React from 'react'
 import type { DispatchPage } from '../../data/dispatch'
+
+function useIsDesktop(breakpoint = 1024): boolean {
+  const [isDesktop, setIsDesktop] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia(`(min-width: ${breakpoint}px)`).matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${breakpoint}px)`)
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [breakpoint])
+  return isDesktop
+}
 
 export function DispatchLayout({
   children,
@@ -67,6 +70,10 @@ function DispatchLayoutContent({
   const showDetailRail =
     active !== 'Settings' && active !== 'Issue' && selectedIssueId !== null
   const drawerOpen = showDetailRail && !isDesktop
+  const closeMobileSidebarForNavigation = () => {
+    detachTopDialog()
+    setMobileSidebarOpen(false)
+  }
 
   // Mobile back button closes these overlays instead of leaving the app.
   useDialogHistory(drawerOpen, closeIssue)
@@ -129,7 +136,12 @@ function DispatchLayoutContent({
           <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 md:hidden" />
           <DrawerPrimitive.Content className="dispatch-theme fixed inset-x-0 bottom-0 z-50 flex h-[88vh] flex-col overflow-hidden rounded-t-[18px] outline-none md:hidden">
             <div className="mx-auto mt-3 mb-1 h-1.5 w-10 shrink-0 rounded-full bg-[var(--dispatch-border-soft)]" />
-            <Sidebar active={active} onToggle={() => setMobileSidebarOpen(false)} />
+            <Sidebar
+              active={active}
+              onToggle={() => setMobileSidebarOpen(false)}
+              onNavigate={closeMobileSidebarForNavigation}
+              replaceNavigation={mobileSidebarOpen}
+            />
           </DrawerPrimitive.Content>
         </DrawerPrimitive.Portal>
       </DrawerPrimitive.Root>

@@ -75,6 +75,16 @@ describe('dialog-history (mobile)', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('does not navigate back when routing has already left the dialog entry', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {})
+    const entry = pushDialog(() => {})
+
+    window.history.replaceState(null, '', '/projects')
+    popDialog(entry)
+
+    expect(back).not.toHaveBeenCalled()
+  })
+
   it('closes nested dialogs top-first, one per back navigation', () => {
     const closeA = vi.fn()
     const closeB = vi.fn()

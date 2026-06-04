@@ -17,7 +17,17 @@ import { ProjectGlyph } from './primitives'
 import type { DispatchPage } from '../../data/dispatch'
 import type { ApiProject } from '@/lib/api'
 
-export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?: () => void }) {
+export function Sidebar({
+  active,
+  onToggle,
+  onNavigate,
+  replaceNavigation = false,
+}: {
+  active: DispatchPage
+  onToggle?: () => void
+  onNavigate?: () => void
+  replaceNavigation?: boolean
+}) {
   const [projects, setProjects] = useState<ApiProject[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [projectError, setProjectError] = useState<string | null>(null)
@@ -84,6 +94,8 @@ export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?:
             <Link
               key={item.label}
               to={item.to}
+              replace={replaceNavigation}
+              onClick={onNavigate}
               className={navItemClass(active === item.label)}
             >
               <Icon size={16} className="shrink-0 opacity-85" />
@@ -110,6 +122,8 @@ export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?:
               project={project}
               depth={depth}
               active={project.id === activeProjectId}
+              onNavigate={onNavigate}
+              replaceNavigation={replaceNavigation}
             />
           ))
         )}
@@ -120,6 +134,8 @@ export function Sidebar({ active, onToggle }: { active: DispatchPage; onToggle?:
       <div className="flex items-center gap-1 border-t border-[var(--dispatch-border-soft)] pt-2">
         <Link
           to="/settings"
+          replace={replaceNavigation}
+          onClick={onNavigate}
           className={`${navItemClass(active === 'Settings')} flex-1`}
         >
           <Settings size={16} className="shrink-0 opacity-85" />
@@ -149,15 +165,21 @@ function SidebarProject({
   project,
   depth,
   active,
+  onNavigate,
+  replaceNavigation,
 }: {
   project: ApiProject
   depth: number
   active: boolean
+  onNavigate?: () => void
+  replaceNavigation: boolean
 }) {
   return (
     <Link
       to="/projects/$projectId"
       params={{ projectId: project.id }}
+      replace={replaceNavigation}
+      onClick={onNavigate}
       className={`${projectItemClass(active)} ${depth > 0 && !active ? 'text-[var(--dispatch-text-tertiary)]' : ''}`}
       style={{
         paddingLeft: `${10 + depth * 14}px`,

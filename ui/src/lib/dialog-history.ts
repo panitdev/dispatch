@@ -99,7 +99,7 @@ export function popDialog(entry: DialogEntry | null): void {
   const isTop = index === stack.length - 1
   stack.splice(index, 1)
 
-  if (isTop && isMobileViewport()) {
+  if (isTop && isMobileViewport() && currentDepth() > stack.length) {
     window.history.back()
   }
 }
