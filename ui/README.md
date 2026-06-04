@@ -53,28 +53,16 @@ bun --bun run format
 bun --bun run check
 ```
 
-## Deploy to Cloudflare Workers Static Assets
+## Deployment
 
-This project deploys the Vite `dist/` directory through Wrangler static assets with SPA fallback:
-
-1. Install Wrangler: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Deploy: `npx wrangler deploy`
-
-Public browser config is read from `window.__ENV__` when Axum serves `env.js`, or from `VITE_API_BASE_URL` and `VITE_KRATOS_PUBLIC_URL` at build time. Production static builds default to same-origin API requests. Set `DISPATCH_API_URL` at runtime only when the browser must call a non-standard API origin.
-
-Static asset deployment is configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/static-assets/.
+The production UI is built into the Dispatch image and served by Axum from the
+same container as the API. Browser API requests use the same origin by default.
 
 ## GitHub Actions CD
 
-Production deploys run from [`.github/workflows/deploy-ui.yml`](../.github/workflows/deploy-ui.yml) on pushes to `main` that touch `ui/**`, or via manual `workflow_dispatch`.
-
-Configure these repository secrets before enabling the workflow:
-
-- `CLOUDFLARE_API_TOKEN`: API token with permission to deploy Workers for this account.
-- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID for the target Workers account.
-
-The workflow runs `bun install --frozen-lockfile` and then `bun run deploy` from `ui/`, which builds the app and publishes the static assets defined in `wrangler.jsonc`.
+Production deploys run from [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
+after the Dispatch image is built by [`.github/workflows/build.yml`](../.github/workflows/build.yml).
+The image build includes the Vite production bundle from `ui/`.
 
 ## Routing
 
