@@ -11,9 +11,11 @@ RUN --mount=type=cache,id=dispatch-ui-bun-install,target=/root/.bun/install/cach
 FROM deps AS builder
 WORKDIR /app
 
+ARG GIT_COMMIT_HASH=unknown
+
 COPY . .
 
-RUN bun run build
+RUN VITE_COMMIT_HASH=$GIT_COMMIT_HASH bun run build
 
 FROM nginx:alpine AS runner
 

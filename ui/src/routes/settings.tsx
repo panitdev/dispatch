@@ -1,9 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Await, createFileRoute } from '@tanstack/react-router'
 
-import { SettingsPage } from '../features/settings/settings-page'
+import { SettingsPage, SettingsPageSkeleton } from '../features/settings/settings-page'
+import { getSettingsPageData } from '../lib/page-data'
 
-export const Route = createFileRoute('/settings')({ component: SettingsRoute })
+export const Route = createFileRoute('/settings')({
+  loader: () => ({ dataPromise: getSettingsPageData() }),
+  component: SettingsRoute,
+})
 
 function SettingsRoute() {
-  return <SettingsPage />
+  const { dataPromise } = Route.useLoaderData()
+
+  return (
+    <Await promise={dataPromise} fallback={<SettingsPageSkeleton />}>
+      {(data) => <SettingsPage data={data} />}
+    </Await>
+  )
 }

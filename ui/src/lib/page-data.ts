@@ -1,12 +1,18 @@
 import {
   getNow,
+  getHealth,
   getIssue,
   getProject,
   listProjectIssues,
   listProjects,
 } from './api'
 
-import type { ApiIssue, ApiNowIssue, ApiProject } from './api'
+import type { ApiHealth, ApiIssue, ApiNowIssue, ApiProject } from './api'
+
+export type SettingsPageData = {
+  health: ApiHealth
+  uiCommitHash: string
+}
 
 export type IssuePageData = {
   issue: ApiIssue
@@ -40,6 +46,14 @@ export async function getIssuePageData({
 
 export function getNowPageData() {
   return getNow()
+}
+
+export async function getSettingsPageData(): Promise<SettingsPageData> {
+  const health = await getHealth()
+  return {
+    health,
+    uiCommitHash: import.meta.env.VITE_COMMIT_HASH ?? 'unknown',
+  }
 }
 
 export async function getDraftsPageData(): Promise<ApiNowIssue[]> {

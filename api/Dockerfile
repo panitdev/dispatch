@@ -15,6 +15,8 @@ RUN apt-get update \
 FROM oven/bun:1-debian AS ui-builder
 WORKDIR /app/ui
 
+ARG GIT_COMMIT_HASH=unknown
+
 COPY ui/package.json ui/bun.lock ./
 
 RUN --mount=type=cache,id=dispatch-ui-bun-install,target=/root/.bun/install/cache,sharing=locked \
@@ -22,7 +24,7 @@ RUN --mount=type=cache,id=dispatch-ui-bun-install,target=/root/.bun/install/cach
 
 COPY ui .
 
-RUN bun run build
+RUN VITE_COMMIT_HASH=$GIT_COMMIT_HASH bun run build
 
 FROM chef AS planner
 
@@ -48,6 +50,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/git \
 
 FROM cacher AS builder
 
+ARG GIT_COMMIT_HASH=unknown
+
 COPY Cargo.toml Cargo.lock ./
 COPY api ./api
 COPY crates ./crates
@@ -55,7 +59,7 @@ COPY crates ./crates
 RUN --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo build --release --locked -p api \
+    GIT_COMMIT_HASH=$GIT_COMMIT_HASH cargo build --release --locked -p api \
     && cp target/release/api /usr/local/bin/dispatch
 
 FROM debian:trixie-slim AS runtime
