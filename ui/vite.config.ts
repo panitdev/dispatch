@@ -9,11 +9,19 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = env.VITE_DEV_ALLOWED_HOSTS
     ? env.VITE_DEV_ALLOWED_HOSTS.split(',')
     : []
+  const apiProxyTarget = env.VITE_DEV_API_PROXY_TARGET || 'http://localhost:8080'
 
   return {
     resolve: { tsconfigPaths: true },
     server: {
       allowedHosts,
+      proxy: {
+        '/api': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+      },
     },
     plugins: [
       devtools(),
