@@ -316,6 +316,7 @@ export type UpdateIssueInput = {
   status?: string
   priority?: number
   labels?: string[]
+  blocks?: unknown[]
 }
 
 export function updateIssue(issueId: string, input: UpdateIssueInput) {
