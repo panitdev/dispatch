@@ -1,11 +1,7 @@
 import {
   AlertCircle,
-  ArrowRight,
-  BookOpen,
   Calendar,
-  ChevronDown,
   Download,
-  Edit3,
   ExternalLink,
   MoreHorizontal,
   Tag,
@@ -15,7 +11,6 @@ import {
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDisplayErrorMessage, getIssue, getProject } from '@/lib/api'
 import { exportIssueMarkdown } from '@/lib/issue-markdown-export'
-import { MarkdownContent } from '@/components/dispatch/markdown-content'
+import { IssueBodyEditorSection } from '@/components/dispatch/IssueBodyEditorSection'
 import { toast } from 'sonner'
 
 import { useIssueSelection } from './issue-selection-context'
@@ -149,13 +144,15 @@ function IssueDetail({
   issue: ApiIssue
   project: ApiProject | null
 }) {
-  const blocks = issue.blocks.filter(
-    (block) => block.content.trim() || block.title?.trim(),
-  )
+  const [currentIssue, setCurrentIssue] = useState(issue)
+
+  useEffect(() => {
+    setCurrentIssue(issue)
+  }, [issue.id])
 
   async function handleExportMarkdown() {
     try {
-      await exportIssueMarkdown(issue.id, issue.title)
+      await exportIssueMarkdown(currentIssue.id, currentIssue.title)
     } catch (error) {
       toast.error(getDisplayErrorMessage(error, 'Failed to export issue'))
     }
@@ -166,20 +163,20 @@ function IssueDetail({
       <div className="flex flex-1 flex-col gap-[18px] overflow-y-auto px-[22px] py-[22px]">
         <div className="flex items-center gap-2 text-xs text-[var(--dispatch-text-quaternary)]">
           <span className="font-mono font-medium tracking-[0.04em]">
-            {issue.key}
+            {currentIssue.key}
           </span>
           <span className="h-3 w-px bg-[var(--dispatch-border-soft)]" />
-          <span>{issue.id}</span>
+          <span>{currentIssue.id}</span>
         </div>
 
         <h2 className="m-0 font-serif text-2xl leading-[1.2] font-medium tracking-[-0.015em] text-[var(--dispatch-text-primary)]">
-          {issue.title}
+          {currentIssue.title}
         </h2>
 
         <div className="mt-2.5 flex flex-wrap gap-1.5">
-          <ProjectChip issue={issue} project={project} />
-          <StatusPill status={formatStatusLabel(issue.status)} />
-          {issue.labels.map((label) => (
+          <ProjectChip issue={currentIssue} project={project} />
+          <StatusPill status={formatStatusLabel(currentIssue.status)} />
+          {currentIssue.labels.map((label) => (
             <span
               className="inline-flex items-center rounded-full border border-[var(--dispatch-border)] bg-[var(--dispatch-bg-elevated)] px-2.5 py-[3px] text-[11.5px] font-medium text-[var(--dispatch-text-secondary)]"
               key={label}
@@ -192,49 +189,21 @@ function IssueDetail({
         <div className="mt-1 flex gap-[18px] text-xs text-[var(--dispatch-text-tertiary)]">
           <span className="inline-flex items-center gap-1.5">
             <Calendar size={13} />
-            Updated {formatDate(issue.updated_at)}
+            Updated {formatDate(currentIssue.updated_at)}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <User size={13} />
-            {issue.assignee_id ? `Assignee ${issue.assignee_id}` : 'Unassigned'}
+            {currentIssue.assignee_id
+              ? `Assignee ${currentIssue.assignee_id}`
+              : 'Unassigned'}
           </span>
         </div>
 
         <div className="my-0.5 h-px bg-[var(--dispatch-border-soft)]" />
-
-        {blocks.length > 0 ? (
-          blocks.map((block) =>
-            block.kind === 'markdown' ? (
-              <MarkdownContent
-                key={block.id}
-                markdown={block.content}
-                className="text-[13.5px] leading-[1.55] text-[var(--dispatch-text-secondary)]"
-              />
-            ) : (
-              <DetailSection
-                icon={
-                  block.kind === 'action' ? (
-                    <ArrowRight size={15} />
-                  ) : (
-                    <BookOpen size={15} />
-                  )
-                }
-                title={block.title ?? formatStatusLabel(block.kind)}
-                key={block.id}
-              >
-                {block.content.trim() ? (
-                  <MarkdownContent markdown={block.content} />
-                ) : null}
-              </DetailSection>
-            ),
-          )
-        ) : (
-          <DetailSection icon={<BookOpen size={15} />} title="Body">
-            <p className="m-0 text-[var(--dispatch-text-tertiary)]">
-              No body content yet.
-            </p>
-          </DetailSection>
-        )}
+        <IssueBodyEditorSection
+          issue={currentIssue}
+          onIssueChange={setCurrentIssue}
+        />
       </div>
 
       <div className="flex items-center gap-1.5 border-t border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)] px-[18px] py-3">
@@ -258,23 +227,6 @@ function IssueDetail({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <ButtonGroup>
-          <Button
-            size="xs"
-            className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"
-          >
-            <Edit3 size={13} />
-            Edit issue
-          </Button>
-          <ButtonGroupSeparator className="bg-[var(--dispatch-cta-divider)]" />
-          <Button
-            size="icon-xs"
-            className="border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]"
-            aria-label="Edit issue options"
-          >
-            <ChevronDown size={12} />
-          </Button>
-        </ButtonGroup>
       </div>
     </>
   )
@@ -316,26 +268,6 @@ function DetailSkeleton() {
       <Skeleton className="h-28 w-full bg-[var(--dispatch-bg-hover)]" />
       <Skeleton className="h-20 w-full bg-[var(--dispatch-bg-hover)]" />
     </div>
-  )
-}
-
-function DetailSection({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="flex flex-col gap-2 text-[13.5px] leading-[1.55] text-[var(--dispatch-text-secondary)]">
-      <div className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)] [&_svg]:text-[var(--dispatch-cobalt-bright)]">
-        {icon}
-        {title}
-      </div>
-      {children}
-    </section>
   )
 }
 

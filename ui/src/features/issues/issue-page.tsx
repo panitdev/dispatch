@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  AlertCircle,
-  ArrowRight,
-  BookOpen,
-  Calendar,
-  Check,
-  Pencil,
-} from 'lucide-react'
+import { AlertCircle, Calendar, Check, Pencil } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -14,16 +7,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
-import { MarkdownContent } from '@/components/dispatch/markdown-content'
 import { formatStatusLabel } from '@/data/dispatch'
+import { IssueBodyEditorSection } from '@/components/dispatch/IssueBodyEditorSection'
 
 import {
   ProjectGlyph,
   StatusCircle,
   StatusPill,
 } from '../../components/dispatch/primitives'
-import { IssueEditor } from '../../components/dispatch/IssueEditor'
 
 import {
   getDisplayErrorMessage,
@@ -34,7 +25,6 @@ import { toast } from 'sonner'
 
 import type React from 'react'
 import type { ApiIssue, UpdateIssueInput } from '@/lib/api'
-import type { IssueBodyBlock } from '../../components/dispatch/IssueEditor'
 import type { IssuePageData } from '@/lib/page-data'
 
 // ─── Priority helpers ─────────────────────────────────────────────────────────
@@ -230,9 +220,6 @@ export function IssuePage({ data }: { data: IssuePageData }) {
   const [issue, setIssue] = useState<ApiIssue>(data.issue)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
-  const [editingBody, setEditingBody] = useState(false)
-  const [bodyDraft, setBodyDraft] = useState<IssueBodyBlock[]>([])
-  const [savingBody, setSavingBody] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [labelsOpen, setLabelsOpen] = useState(false)
@@ -240,9 +227,6 @@ export function IssuePage({ data }: { data: IssuePageData }) {
 
   const titleRef = useRef<HTMLTextAreaElement>(null)
 
-  const visibleBlocks = issue.blocks.filter(
-    (block) => block.content.trim() || block.title?.trim(),
-  )
   const projectName = project?.name ?? `Project ${issue.project_id}`
   const projectKey = project?.key ?? issue.project_id
 
@@ -291,28 +275,6 @@ export function IssuePage({ data }: { data: IssuePageData }) {
     } else if (e.key === 'Escape') {
       setEditingTitle(false)
     }
-  }
-
-  function startEditingBody() {
-    setBodyDraft(issue.blocks as IssueBodyBlock[])
-    setEditingBody(true)
-  }
-
-  async function commitBody() {
-    setSavingBody(true)
-    try {
-      const updated = await updateIssue(issue.id, { blocks: bodyDraft })
-      setIssue(updated)
-      setEditingBody(false)
-    } catch (err) {
-      toast.error(getDisplayErrorMessage(err, 'Failed to save body.'))
-    } finally {
-      setSavingBody(false)
-    }
-  }
-
-  function cancelBody() {
-    setEditingBody(false)
   }
 
   const statusPopover = (
@@ -473,87 +435,7 @@ export function IssuePage({ data }: { data: IssuePageData }) {
 
           <div className="mb-6 h-px bg-[var(--dispatch-border-soft)]" />
 
-          {/* Body blocks */}
-          {editingBody ? (
-            <div className="flex flex-col gap-4">
-              <IssueEditor
-                key={`body-${issue.id}`}
-                initialBlocks={bodyDraft}
-                placeholder="Write a description..."
-                onChange={setBodyDraft}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => void commitBody()}
-                  loading={savingBody}
-                  loadingText="Saving…"
-                  className="rounded-[var(--dispatch-r-lg)] border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]/90"
-                >
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={cancelBody}
-                  disabled={savingBody}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="group/body">
-              {visibleBlocks.length > 0 ? (
-                <div className="flex flex-col gap-6">
-                  {visibleBlocks.map((block) =>
-                    block.kind === 'markdown' ? (
-                      <MarkdownContent
-                        key={block.id}
-                        markdown={block.content}
-                        className="text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]"
-                      />
-                    ) : (
-                      <section
-                        key={block.id}
-                        className="flex flex-col gap-2 text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]"
-                      >
-                        <div className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)] [&_svg]:text-[var(--dispatch-cobalt-bright)]">
-                          {block.kind === 'action' ? (
-                            <ArrowRight size={15} />
-                          ) : (
-                            <BookOpen size={15} />
-                          )}
-                          {block.title ?? formatStatusLabel(block.kind)}
-                        </div>
-                        {block.content.trim() ? (
-                          <MarkdownContent markdown={block.content} />
-                        ) : null}
-                      </section>
-                    ),
-                  )}
-                </div>
-              ) : (
-                <section className="flex flex-col gap-2 text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]">
-                  <div className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)] [&_svg]:text-[var(--dispatch-cobalt-bright)]">
-                    <BookOpen size={15} />
-                    Body
-                  </div>
-                  <p className="m-0 text-[var(--dispatch-text-tertiary)]">
-                    No body content yet.
-                  </p>
-                </section>
-              )}
-              <button
-                type="button"
-                onClick={startEditingBody}
-                className="mt-5 flex items-center gap-1.5 text-[12px] text-[var(--dispatch-text-quaternary)] opacity-0 transition-opacity hover:text-[var(--dispatch-text-tertiary)] group-hover/body:opacity-100"
-              >
-                <Pencil size={11} />
-                Edit body
-              </button>
-            </div>
-          )}
+          <IssueBodyEditorSection issue={issue} onIssueChange={setIssue} />
         </div>
       </div>
 
