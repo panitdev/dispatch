@@ -1,9 +1,10 @@
 import { nanoid } from 'nanoid'
-import { MarkdownSerializer, defaultMarkdownSerializer } from 'prosemirror-markdown'
 
 import type { Editor } from '@tiptap/core'
+import type { JSONContent } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import type { MarkdownSerializerState } from 'prosemirror-markdown'
+
+import { parseMarkdownToDocContent, serializeNodesToMarkdown } from './markdown'
 
 export type IssueBodyBlock = {
   id: string
@@ -12,24 +13,6 @@ export type IssueBodyBlock = {
   content: string
   metadata?: Record<string, unknown>
 }
-
-const issueMarkdownSerializer = new MarkdownSerializer(
-  {
-    ...defaultMarkdownSerializer.nodes,
-    section(state: MarkdownSerializerState, node: ProseMirrorNode) {
-      state.write(`## ${node.attrs.title as string}\n\n`)
-    },
-    taskList(state: MarkdownSerializerState, node: ProseMirrorNode) {
-      state.renderList(node, '  ', () => '- ')
-    },
-    taskItem(state: MarkdownSerializerState, node: ProseMirrorNode) {
-      state.write(node.attrs.checked ? '[x] ' : '[ ] ')
-      state.renderInline(node)
-      state.closeBlock(node)
-    },
-  },
-  defaultMarkdownSerializer.marks,
-)
 
 export function serializeToBlocks(editor: Editor): IssueBodyBlock[] {
   const doc = editor.state.doc
@@ -40,8 +23,7 @@ export function serializeToBlocks(editor: Editor): IssueBodyBlock[] {
   function flushCurrent() {
     if (!current) return
     if (contentNodes.length > 0) {
-      const miniDoc = doc.type.schema.nodes.doc.create(null, contentNodes)
-      current.content = issueMarkdownSerializer.serialize(miniDoc)
+      current.content = serializeNodesToMarkdown(editor, contentNodes)
     }
     blocks.push(current)
     contentNodes = []
@@ -70,7 +52,7 @@ export function serializeToBlocks(editor: Editor): IssueBodyBlock[] {
 }
 
 export function deserializeFromBlocks(blocks: IssueBodyBlock[]): object {
-  const content: object[] = []
+  const content: JSONContent[] = []
 
   for (const block of blocks) {
     if (block.kind !== 'markdown') {
@@ -81,11 +63,8 @@ export function deserializeFromBlocks(blocks: IssueBodyBlock[]): object {
     }
 
     if (block.content.trim()) {
-      content.push({
-        type: 'paragraph',
-        content: [{ type: 'text', text: block.content }],
-      })
-    } else {
+      content.push(...parseMarkdownToDocContent(block.content))
+    } else if (block.kind !== 'markdown') {
       content.push({ type: 'paragraph' })
     }
   }

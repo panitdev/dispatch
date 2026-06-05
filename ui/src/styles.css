@@ -258,8 +258,7 @@ body {
   --dispatch-brand-mark-end: oklch(0.36 0.22 280);
   --dispatch-green-text: oklch(0.42 0.14 155);
   --dispatch-shadow-card:
-    0 1px 0 0 oklch(1 0 0 / 0.6) inset,
-    0 1px 3px oklch(0.18 0.06 264 / 0.06);
+    0 1px 0 0 oklch(1 0 0 / 0.6) inset, 0 1px 3px oklch(0.18 0.06 264 / 0.06);
   --dispatch-shadow-cta:
     0 6px 18px -10px oklch(0.48 0.24 264 / 0.45),
     0 0 0 1px oklch(0.55 0.24 264 / 0.45) inset,
@@ -430,6 +429,73 @@ body {
   pointer-events: none;
   height: 0;
   font-style: italic;
+}
+
+.dispatch-markdown {
+  color: inherit;
+}
+
+.dispatch-markdown > :first-child {
+  margin-top: 0;
+}
+
+.dispatch-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.dispatch-markdown p,
+.dispatch-markdown ul,
+.dispatch-markdown ol,
+.dispatch-markdown pre,
+.dispatch-markdown blockquote {
+  margin: 0 0 0.75em;
+}
+
+.dispatch-markdown ul,
+.dispatch-markdown ol {
+  padding-left: 1.4em;
+}
+
+.dispatch-markdown li + li {
+  margin-top: 0.15em;
+}
+
+.dispatch-markdown a {
+  color: var(--dispatch-cobalt-bright);
+  text-decoration: none;
+}
+
+.dispatch-markdown a:hover {
+  text-decoration: underline;
+}
+
+.dispatch-markdown code {
+  font-family: var(--dispatch-font-mono);
+  font-size: 12.5px;
+  background: var(--dispatch-bg-elevated);
+  border: 1px solid var(--dispatch-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.dispatch-markdown pre {
+  overflow-x: auto;
+  border: 1px solid var(--dispatch-border);
+  border-radius: var(--dispatch-r-md);
+  background: var(--dispatch-bg-elevated);
+  padding: 12px 14px;
+}
+
+.dispatch-markdown pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.dispatch-markdown blockquote {
+  border-left: 3px solid var(--dispatch-border-strong);
+  padding-left: 14px;
+  color: var(--dispatch-text-secondary);
 }
 
 /* ─── Slash Command Palette ─── */

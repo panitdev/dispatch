@@ -9,8 +9,13 @@ import {
 } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { MarkdownContent } from '@/components/dispatch/markdown-content'
 import { formatStatusLabel } from '@/data/dispatch'
 
 import {
@@ -501,22 +506,32 @@ export function IssuePage({ data }: { data: IssuePageData }) {
             <div className="group/body">
               {visibleBlocks.length > 0 ? (
                 <div className="flex flex-col gap-6">
-                  {visibleBlocks.map((block) => (
-                    <section
-                      key={block.id}
-                      className="flex flex-col gap-2 text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]"
-                    >
-                      <div className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)] [&_svg]:text-[var(--dispatch-cobalt-bright)]">
-                        {block.kind === 'action' ? (
-                          <ArrowRight size={15} />
-                        ) : (
-                          <BookOpen size={15} />
-                        )}
-                        {block.title ?? formatStatusLabel(block.kind)}
-                      </div>
-                      <p className="m-0 whitespace-pre-wrap">{block.content}</p>
-                    </section>
-                  ))}
+                  {visibleBlocks.map((block) =>
+                    block.kind === 'markdown' ? (
+                      <MarkdownContent
+                        key={block.id}
+                        markdown={block.content}
+                        className="text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]"
+                      />
+                    ) : (
+                      <section
+                        key={block.id}
+                        className="flex flex-col gap-2 text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]"
+                      >
+                        <div className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.005em] text-[var(--dispatch-text-primary)] [&_svg]:text-[var(--dispatch-cobalt-bright)]">
+                          {block.kind === 'action' ? (
+                            <ArrowRight size={15} />
+                          ) : (
+                            <BookOpen size={15} />
+                          )}
+                          {block.title ?? formatStatusLabel(block.kind)}
+                        </div>
+                        {block.content.trim() ? (
+                          <MarkdownContent markdown={block.content} />
+                        ) : null}
+                      </section>
+                    ),
+                  )}
                 </div>
               ) : (
                 <section className="flex flex-col gap-2 text-[13.5px] leading-[1.6] text-[var(--dispatch-text-secondary)]">
@@ -592,9 +607,7 @@ export function IssuePage({ data }: { data: IssuePageData }) {
           popoverContent={labelsPopover}
         >
           {issue.labels.length > 0 ? (
-            issue.labels.map((label) => (
-              <LabelPill key={label} label={label} />
-            ))
+            issue.labels.map((label) => <LabelPill key={label} label={label} />)
           ) : (
             <span className="text-[13px] text-[var(--dispatch-text-quaternary)]">
               None

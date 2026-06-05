@@ -15,10 +15,7 @@ import {
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import {
-  ButtonGroup,
-  ButtonGroupSeparator,
-} from '@/components/ui/button-group'
+import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +25,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDisplayErrorMessage, getIssue, getProject } from '@/lib/api'
 import { exportIssueMarkdown } from '@/lib/issue-markdown-export'
+import { MarkdownContent } from '@/components/dispatch/markdown-content'
 import { toast } from 'sonner'
 
 import { useIssueSelection } from './issue-selection-context'
@@ -41,7 +39,12 @@ import type { ApiIssue, ApiProject } from '@/lib/api'
 
 type DetailState =
   | { status: 'loading'; issue: null; project: null; error: null }
-  | { status: 'ready'; issue: ApiIssue; project: ApiProject | null; error: null }
+  | {
+      status: 'ready'
+      issue: ApiIssue
+      project: ApiProject | null
+      error: null
+    }
   | { status: 'error'; issue: null; project: null; error: string }
 
 export function DetailRail({ className }: { className?: string }) {
@@ -103,12 +106,21 @@ export function DetailRail({ className }: { className?: string }) {
   }, [selectedIssueId])
 
   return (
-    <aside className={cn("flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]", className)}>
+    <aside
+      className={cn(
+        'flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]',
+        className,
+      )}
+    >
       <div className="flex items-center border-b border-[var(--dispatch-border-soft)] px-[18px] py-3.5">
         <IconButton label="Open issue">
           <ExternalLink size={15} />
         </IconButton>
-        <IconButton label="Close issue" className="ml-auto" onClick={closeIssue}>
+        <IconButton
+          label="Close issue"
+          className="ml-auto"
+          onClick={closeIssue}
+        >
           <X size={15} />
         </IconButton>
       </div>
@@ -191,15 +203,31 @@ function IssueDetail({
         <div className="my-0.5 h-px bg-[var(--dispatch-border-soft)]" />
 
         {blocks.length > 0 ? (
-          blocks.map((block) => (
-            <DetailSection
-              icon={block.kind === 'action' ? <ArrowRight size={15} /> : <BookOpen size={15} />}
-              title={block.title ?? formatStatusLabel(block.kind)}
-              key={block.id}
-            >
-              <p className="m-0 whitespace-pre-wrap">{block.content}</p>
-            </DetailSection>
-          ))
+          blocks.map((block) =>
+            block.kind === 'markdown' ? (
+              <MarkdownContent
+                key={block.id}
+                markdown={block.content}
+                className="text-[13.5px] leading-[1.55] text-[var(--dispatch-text-secondary)]"
+              />
+            ) : (
+              <DetailSection
+                icon={
+                  block.kind === 'action' ? (
+                    <ArrowRight size={15} />
+                  ) : (
+                    <BookOpen size={15} />
+                  )
+                }
+                title={block.title ?? formatStatusLabel(block.kind)}
+                key={block.id}
+              >
+                {block.content.trim() ? (
+                  <MarkdownContent markdown={block.content} />
+                ) : null}
+              </DetailSection>
+            ),
+          )
         ) : (
           <DetailSection icon={<BookOpen size={15} />} title="Body">
             <p className="m-0 text-[var(--dispatch-text-tertiary)]">
