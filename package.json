@@ -1,0 +1,7 @@
+{
+  "name": "dispatch",
+  "private": true,
+  "scripts": {
+    "ui": "bun --cwd ui dev"
+  }
+}
