@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, animate, motion, useMotionValue } from "framer-motion"
 import { Slot } from "radix-ui"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -24,7 +24,7 @@ const buttonVariants = cva(
         ghost:
           "border-none bg-transparent text-foreground hover:bg-muted",
         link:
-          "h-auto rounded-none border-none bg-transparent px-0 py-0 text-primary underline-offset-4 hover:underline",
+          "h-auto rounded-none border-transparent bg-transparent px-0 py-0 text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-5 py-2 has-[>svg]:px-4",
@@ -58,6 +58,7 @@ type ButtonProps = React.ComponentProps<"button"> &
     asChild?: boolean
     loading?: boolean
     loadingText?: React.ReactNode
+    animateWidth?: boolean
   }
 
 function Button({
@@ -67,6 +68,7 @@ function Button({
   asChild = false,
   loading = false,
   loadingText,
+  animateWidth = false,
   disabled,
   children,
   fullWidth,
@@ -75,31 +77,69 @@ function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading
 
+  const buttonRef = React.useRef<HTMLButtonElement>(null)
+  const spacerRef = React.useRef<HTMLSpanElement>(null)
+  const animatedWidth = useMotionValue(0)
+  const hasMeasured = React.useRef(false)
+  const widthAnimation = React.useRef<ReturnType<typeof animate> | null>(null)
+
+  React.useLayoutEffect(() => {
+    if (!animateWidth) {
+      hasMeasured.current = false
+      return
+    }
+    if (!buttonRef.current || !spacerRef.current) return
+    const cs = getComputedStyle(buttonRef.current)
+    const w = spacerRef.current.offsetWidth + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+    if (!hasMeasured.current) {
+      animatedWidth.jump(w)
+      hasMeasured.current = true
+    } else {
+      widthAnimation.current?.stop()
+      widthAnimation.current = animate(animatedWidth, w, { type: "spring", stiffness: 350, damping: 35 })
+    }
+  }, [loading, animateWidth, animatedWidth])
+
   const content = (
-    <AnimatePresence mode="wait" initial={false}>
-      {loading ? (
-        <motion.span
-          key="loading"
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          className="inline-flex items-center gap-2"
-        >
-          <Loader2 className="size-4 animate-spin" />
-          {loadingText ?? children}
-        </motion.span>
-      ) : (
-        <motion.span
-          key="idle"
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
-          className="inline-flex items-center gap-2"
-        >
-          {children}
-        </motion.span>
-      )}
-    </AnimatePresence>
+    <>
+      {/* Invisible in-flow spacer so the button holds its natural width */}
+      <span ref={spacerRef} aria-hidden className="invisible shrink-0 pointer-events-none inline-flex items-center gap-2">
+        {loading ? (
+          <>
+            <Loader2 className="size-4" />
+            {loadingText ?? children}
+          </>
+        ) : (
+          children
+        )}
+      </span>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {loading ? (
+          <motion.span
+            key="loading"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 350, damping: 18 }}
+            className="absolute inset-0 inline-flex items-center justify-center gap-2"
+          >
+            <Loader2 className="size-4 animate-spin" />
+            {loadingText ?? children}
+          </motion.span>
+        ) : (
+          <motion.span
+            key="idle"
+            initial={{ y: "-100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "-100%" }}
+            transition={{ type: "spring", stiffness: 350, damping: 18 }}
+            className="absolute inset-0 inline-flex items-center justify-center gap-2"
+          >
+            {children}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </>
   )
 
   if (asChild) {
@@ -126,18 +166,22 @@ function Button({
     )
   }
 
+  const { style: externalStyle, ...restProps } = props as React.ComponentProps<typeof motion.button>
+
   return (
     <motion.button
+      ref={buttonRef}
       data-slot="button"
       data-variant={variant}
       data-size={size}
       whileTap={isDisabled ? undefined : { scale: 0.97 }}
       whileHover={isDisabled ? undefined : { y: -1 }}
       transition={{ type: "spring", stiffness: 600, damping: 30 }}
-      className={cn(buttonVariants({ variant, size, fullWidth, className }))}
+      style={{ ...externalStyle, ...(animateWidth ? { width: animatedWidth } : {}) }}
+      className={cn(buttonVariants({ variant, size, fullWidth, className }), "overflow-hidden")}
       disabled={isDisabled}
       onClick={onClick}
-      {...(props as React.ComponentProps<typeof motion.button>)}
+      {...restProps}
     >
       {content}
     </motion.button>
