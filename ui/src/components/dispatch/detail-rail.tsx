@@ -103,7 +103,7 @@ export function DetailRail({ className }: { className?: string }) {
   return (
     <aside
       className={cn(
-        'flex h-full w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]',
+        'flex h-full min-h-0 w-[380px] shrink-0 flex-col border-l border-[var(--dispatch-border-soft)] bg-[var(--dispatch-bg-surface)]',
         className,
       )}
     >
@@ -160,7 +160,7 @@ function IssueDetail({
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-[18px] overflow-y-auto px-[22px] py-[22px]">
+      <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[22px] py-[22px]">
         <div className="flex items-center gap-2 text-xs text-[var(--dispatch-text-quaternary)]">
           <span className="font-mono font-medium tracking-[0.04em]">
             {currentIssue.key}
