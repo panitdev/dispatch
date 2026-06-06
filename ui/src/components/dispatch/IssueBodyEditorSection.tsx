@@ -97,7 +97,8 @@ export function IssueBodyEditorSection({
             size="sm"
             onClick={() => void commitBody()}
             loading={savingBody}
-            loadingText="Saving…"
+            loadingText="Saving"
+            animateWidth
             className="rounded-[var(--dispatch-r-lg)] border-transparent bg-[var(--dispatch-cobalt)] text-white shadow-[var(--dispatch-shadow-cta)] hover:bg-[var(--dispatch-cobalt)]/90"
           >
             Save
