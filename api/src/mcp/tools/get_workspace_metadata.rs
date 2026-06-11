@@ -33,6 +33,18 @@ pub async fn call(
         JsonRpcError::new(INVALID_PARAMS, "invalid get_workspace_metadata arguments")
     })?;
 
+    for value in &args.scope {
+        if !matches!(
+            value.as_str(),
+            "projects" | "teams" | "labels" | "states" | "members"
+        ) {
+            return Err(JsonRpcError::new(
+                INVALID_PARAMS,
+                format!("invalid scope: {value}"),
+            ));
+        }
+    }
+
     let fetch_all = args.scope.is_empty();
     let fetch = |key: &str| fetch_all || args.scope.iter().any(|s| s == key);
 

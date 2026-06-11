@@ -63,7 +63,8 @@ pub async fn read(
     let params: ReadResourceParams = serde_json::from_value(params.clone().unwrap_or(Value::Null))
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid resources/read params"))?;
     let identifier = parse_issue_uri(&params.uri)?;
-    let issue_identifier = parse_issue_identifier_value(&identifier);
+    let issue_identifier = parse_issue_identifier_value(&identifier, "uri")
+        .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid resource uri"))?;
 
     let mut conn = state
         .db

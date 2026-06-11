@@ -20,7 +20,7 @@ pub fn all() -> Vec<Tool> {
     vec![
         Tool {
             name: "search_issues",
-            description: "Search and filter issues by structured criteria and optional full-text query. Returns lightweight summaries; no descriptions. Paginated with opaque cursor. Does not match issue keys (e.g. STR-28) — use get_issue with key instead.",
+            description: "Search and filter issues by structured criteria and optional full-text query. Returns lightweight summaries; no descriptions. Paginated with opaque cursor. Does not match issue keys (e.g. STR-28) — use get_issue with an issue identifier instead.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -31,7 +31,7 @@ pub fn all() -> Vec<Tool> {
                             "project_id":    { "type": "string" },
                             "team_id":       { "type": "string" },
                             "state_id":      { "type": "array", "items": { "type": "string" } },
-                            "state_group":   { "type": "array", "items": { "type": "string", "enum": ["backlog","unstarted","started","completed","cancelled"] } },
+                            "state_group":   { "type": "array", "items": { "type": "string", "description": "Allowed values: backlog, unstarted, started, completed, cancelled." } },
                             "assignee_id":   { "type": "string", "description": "SnowflakeId or \"me\"." },
                             "label_id":      { "type": "array", "items": { "type": "string" } },
                             "priority":      { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 4 } },
@@ -51,15 +51,14 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "get_issue",
-            description: "Fetch a single issue with full content (description included). Use directly when you have an issue key (e.g. STR-28) — no prior search needed. Provide exactly one of `key` or `id`. Optionally include comments, edit history, and linked relations.",
+            description: "Fetch a single issue with full content (description included). Use directly when you have an issue key (e.g. STR-28) or numeric issue ID — no prior search needed. Optionally include comments, edit history, and linked relations.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "key": { "type": "string", "description": "Human-readable issue key, e.g. STR-28. Use this when you know the key." },
-                    "id": { "type": "string", "description": "Numeric issue ID from Dispatch URLs or search results. Use when you have the ID but not the key." },
+                    "identifier": { "type": "string", "description": "Issue identifier. Accepts either a numeric issue ID or a key like STR-28." },
                     "include": {
                         "type": "array",
-                        "items": { "type": "string", "enum": ["comments", "history", "relations"] }
+                        "items": { "type": "string", "description": "Allowed values: comments, history, relations." }
                     }
                 },
                 "additionalProperties": false
@@ -73,7 +72,7 @@ pub fn all() -> Vec<Tool> {
                 "properties": {
                     "scope": {
                         "type": "array",
-                        "items": { "type": "string", "enum": ["projects","teams","labels","states","members"] }
+                        "items": { "type": "string", "description": "Allowed values: projects, teams, labels, states, members." }
                     }
                 },
                 "additionalProperties": false
@@ -110,23 +109,22 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "update_issue",
-            description: "Partially update an issue. Provide exactly one of `key` (e.g. STR-28) or `id`. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
+            description: "Partially update an issue identified by either a numeric issue ID or a key like STR-28. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "key": { "type": "string", "description": "Human-readable issue key, e.g. STR-28." },
-                    "id": { "type": "string", "description": "Numeric issue ID from Dispatch URLs or search results." },
+                    "identifier": { "type": "string", "description": "Issue identifier. Accepts either a numeric issue ID or a key like STR-28." },
                     "patch": {
                         "type": "object",
                         "properties": {
                             "title":       { "type": "string" },
-                            "description": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                            "description": { "type": ["string", "null"], "description": "String to replace the description, or null to clear it." },
                             "state_id":    { "type": "string" },
-                            "assignee_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                            "assignee_id": { "type": ["string", "null"], "description": "SnowflakeId, \"me\", or null to clear." },
                             "priority":    { "type": "integer", "minimum": 0, "maximum": 4 },
                             "label_ids":   { "type": "array", "items": { "type": "string" } },
                             "project_id":  { "type": "string" },
-                            "parent_id":   { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+                            "parent_id":   { "type": ["string", "null"], "description": "Parent issue ID, or null to clear." }
                         },
                         "additionalProperties": false,
                         "minProperties": 1
@@ -157,7 +155,7 @@ pub fn all() -> Vec<Tool> {
                 "properties": {
                     "from_id": { "type": "string" },
                     "to_id":   { "type": "string" },
-                    "type":    { "type": "string", "enum": ["blocks","blocked_by","related","duplicate"] }
+                    "type":    { "type": "string", "description": "Allowed values: blocks, blocked_by, related, duplicate." }
                 },
                 "required": ["from_id", "to_id", "type"],
                 "additionalProperties": false
@@ -179,7 +177,7 @@ pub fn all() -> Vec<Tool> {
                         "type": "object",
                         "properties": {
                             "state_id":    { "type": "string" },
-                            "assignee_id": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                            "assignee_id": { "type": ["string", "null"], "description": "SnowflakeId, \"me\", or null to clear." },
                             "priority":    { "type": "integer", "minimum": 0, "maximum": 4 },
                             "label_ids":   { "type": "array", "items": { "type": "string" } },
                             "project_id":  { "type": "string" }
@@ -203,6 +201,27 @@ pub(crate) fn parse_snowflake_id(value: &str, field: &str) -> Result<i64, JsonRp
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, format!("invalid {field}: {value}")))
 }
 
+fn normalize_issue_key(value: &str) -> Option<String> {
+    let (prefix, number) = value.rsplit_once('-')?;
+    if prefix.is_empty() || number.is_empty() {
+        return None;
+    }
+
+    let mut prefix_chars = prefix.chars();
+    let first = prefix_chars.next()?;
+    if !first.is_ascii_alphabetic() {
+        return None;
+    }
+    if !prefix_chars.all(|ch| ch.is_ascii_alphanumeric()) {
+        return None;
+    }
+    if !number.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+
+    Some(format!("{}-{}", prefix.to_ascii_uppercase(), number))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum IssueIdentifier {
     Id(i64),
@@ -219,25 +238,38 @@ impl IssueIdentifier {
 }
 
 pub(crate) fn parse_issue_identifier(
-    id: Option<String>,
-    key: Option<String>,
+    value: Option<String>,
+    field: &str,
 ) -> Result<IssueIdentifier, JsonRpcError> {
-    match (id, key) {
-        (Some(id), None) => parse_snowflake_id(&id, "id").map(IssueIdentifier::Id),
-        (None, Some(key)) if !key.is_empty() => Ok(IssueIdentifier::Key(key)),
-        (None, Some(_)) => Err(JsonRpcError::new(INVALID_PARAMS, "key must not be empty")),
-        (None, None) => Err(JsonRpcError::new(INVALID_PARAMS, "provide id or key")),
-        (Some(_), Some(_)) => Err(JsonRpcError::new(
-            INVALID_PARAMS,
-            "provide only one of id or key",
-        )),
-    }
+    let value =
+        value.ok_or_else(|| JsonRpcError::new(INVALID_PARAMS, format!("provide {field}")))?;
+    parse_issue_identifier_value(&value, field)
 }
 
-pub(crate) fn parse_issue_identifier_value(value: &str) -> IssueIdentifier {
-    parse_snowflake_id(value, "id")
-        .map(IssueIdentifier::Id)
-        .unwrap_or_else(|_| IssueIdentifier::Key(value.to_owned()))
+pub(crate) fn parse_issue_identifier_value(
+    value: &str,
+    field: &str,
+) -> Result<IssueIdentifier, JsonRpcError> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(JsonRpcError::new(
+            INVALID_PARAMS,
+            format!("{field} must not be empty"),
+        ));
+    }
+
+    if let Ok(id) = value.parse::<i64>() {
+        return Ok(IssueIdentifier::Id(id));
+    }
+
+    if let Some(key) = normalize_issue_key(value) {
+        return Ok(IssueIdentifier::Key(key));
+    }
+
+    Err(JsonRpcError::new(
+        INVALID_PARAMS,
+        format!("invalid {field}: {value}"),
+    ))
 }
 
 pub(crate) fn not_found_error(id: &str) -> Result<Value, JsonRpcError> {
@@ -307,32 +339,38 @@ mod tests {
         assert_eq!(tools[6].name, "comment_on_issue");
         assert_eq!(tools[7].name, "relate_issues");
         assert_eq!(tools[8].name, "bulk_update_issues");
-        assert_eq!(tools[1].input_schema["properties"]["key"]["type"], "string");
-        assert_eq!(tools[1].input_schema["properties"]["id"]["type"], "string");
+        assert_eq!(
+            tools[1].input_schema["properties"]["identifier"]["type"],
+            "string"
+        );
         assert_eq!(tools[5].input_schema["required"], json!(["patch"]));
-        assert_eq!(tools[5].input_schema["properties"]["key"]["type"], "string");
-        assert_eq!(tools[5].input_schema["properties"]["id"]["type"], "string");
+        assert_eq!(
+            tools[5].input_schema["properties"]["identifier"]["type"],
+            "string"
+        );
     }
 
     #[test]
     fn accepts_issue_identifier_id_or_key() {
         assert_eq!(
-            parse_issue_identifier(Some("123".to_owned()), None).unwrap(),
+            parse_issue_identifier(Some("123".to_owned()), "identifier").unwrap(),
             IssueIdentifier::Id(123)
         );
         assert_eq!(
-            parse_issue_identifier(None, Some("DIS-1".to_owned())).unwrap(),
+            parse_issue_identifier(Some("dis-1".to_owned()), "identifier").unwrap(),
             IssueIdentifier::Key("DIS-1".to_owned())
         );
         assert_eq!(
-            parse_issue_identifier(None, None).unwrap_err().message,
-            "provide id or key"
-        );
-        assert_eq!(
-            parse_issue_identifier(Some("123".to_owned()), Some("DIS-1".to_owned()))
+            parse_issue_identifier(None, "identifier")
                 .unwrap_err()
                 .message,
-            "provide only one of id or key"
+            "provide identifier"
+        );
+        assert_eq!(
+            parse_issue_identifier(Some("not-an-issue".to_owned()), "identifier")
+                .unwrap_err()
+                .message,
+            "invalid identifier: not-an-issue"
         );
     }
 

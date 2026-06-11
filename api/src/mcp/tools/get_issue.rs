@@ -25,8 +25,8 @@ use crate::mcp::{
 
 #[derive(Deserialize)]
 struct GetIssueArgs {
-    id: Option<String>,
-    key: Option<String>,
+    #[serde(alias = "id", alias = "key")]
+    identifier: Option<String>,
     #[serde(default)]
     include: Vec<String>,
 }
@@ -38,9 +38,21 @@ pub async fn call(
 ) -> Result<Value, JsonRpcError> {
     let args: GetIssueArgs = serde_json::from_value(args)
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid get_issue arguments"))?;
-    let GetIssueArgs { id, key, include } = args;
-    let identifier = parse_issue_identifier(id, key)?;
+    let GetIssueArgs {
+        identifier,
+        include,
+    } = args;
+    let identifier = parse_issue_identifier(identifier, "identifier")?;
     let identifier_label = identifier.label();
+
+    for value in &include {
+        if !matches!(value.as_str(), "comments" | "history" | "relations") {
+            return Err(JsonRpcError::new(
+                INVALID_PARAMS,
+                format!("invalid include: {value}"),
+            ));
+        }
+    }
 
     let mut conn = state
         .db
@@ -249,24 +261,24 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn get_issue_args_accepts_id_or_key() {
-        let args: GetIssueArgs = serde_json::from_value(json!({ "id": "123" })).unwrap();
-        assert_eq!(args.id.as_deref(), Some("123"));
+    fn get_issue_args_accepts_identifier_and_legacy_aliases() {
+        let args: GetIssueArgs = serde_json::from_value(json!({ "identifier": "123" })).unwrap();
+        assert_eq!(args.identifier.as_deref(), Some("123"));
 
         let args: GetIssueArgs = serde_json::from_value(json!({ "key": "DIS-1" })).unwrap();
-        assert_eq!(args.key.as_deref(), Some("DIS-1"));
+        assert_eq!(args.identifier.as_deref(), Some("DIS-1"));
     }
 
     #[test]
     fn get_issue_args_include_defaults_to_empty() {
-        let args: GetIssueArgs = serde_json::from_value(json!({ "id": "123" })).unwrap();
+        let args: GetIssueArgs = serde_json::from_value(json!({ "identifier": "123" })).unwrap();
         assert!(args.include.is_empty());
     }
 
     #[test]
     fn get_issue_args_parses_include() {
         let args: GetIssueArgs = serde_json::from_value(json!({
-            "id": "123",
+            "identifier": "123",
             "include": ["comments", "history"]
         }))
         .unwrap();

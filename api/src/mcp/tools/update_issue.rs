@@ -34,8 +34,8 @@ where
 
 #[derive(Deserialize)]
 struct UpdateIssueArgs {
-    id: Option<String>,
-    key: Option<String>,
+    #[serde(alias = "id", alias = "key")]
+    identifier: Option<String>,
     patch: UpdateIssuePatch,
 }
 
@@ -60,8 +60,8 @@ pub async fn call(
 ) -> Result<Value, JsonRpcError> {
     let args: UpdateIssueArgs = serde_json::from_value(args)
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid update_issue arguments"))?;
-    let UpdateIssueArgs { id, key, patch } = args;
-    let identifier = parse_issue_identifier(id, key)?;
+    let UpdateIssueArgs { identifier, patch } = args;
+    let identifier = parse_issue_identifier(identifier, "identifier")?;
     let identifier_label = identifier.label();
 
     let mut conn = state
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn patch_parses_null_assignee() {
         let args: UpdateIssueArgs = serde_json::from_value(json!({
-            "id": "1",
+            "identifier": "1",
             "patch": { "assignee_id": null }
         }))
         .unwrap();
@@ -386,14 +386,15 @@ mod tests {
     #[test]
     fn patch_absent_assignee_is_none() {
         let args: UpdateIssueArgs =
-            serde_json::from_value(json!({ "id": "1", "patch": { "title": "T" } })).unwrap();
+            serde_json::from_value(json!({ "identifier": "1", "patch": { "title": "T" } }))
+                .unwrap();
         assert_eq!(args.patch.assignee_id, None);
     }
 
     #[test]
     fn patch_null_parent_id_is_clear() {
         let args: UpdateIssueArgs = serde_json::from_value(json!({
-            "id": "1",
+            "identifier": "1",
             "patch": { "parent_id": null }
         }))
         .unwrap();
