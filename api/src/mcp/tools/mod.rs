@@ -20,11 +20,11 @@ pub fn all() -> Vec<Tool> {
     vec![
         Tool {
             name: "search_issues",
-            description: "Search and filter issues by structured criteria and optional full-text query. Returns lightweight summaries; no descriptions. Paginated with opaque cursor.",
+            description: "Search and filter issues by structured criteria and optional full-text query. Returns lightweight summaries; no descriptions. Paginated with opaque cursor. Does not match issue keys (e.g. STR-28) — use get_issue with key instead.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "query": { "type": "string", "description": "Full-text search across title and description." },
+                    "query": { "type": "string", "description": "Full-text search across title and description only. Does not match issue keys." },
                     "filter": {
                         "type": "object",
                         "properties": {
@@ -51,21 +51,17 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "get_issue",
-            description: "Fetch a single issue by issue ID with full content (description included). Prefer the id from Dispatch web URLs or search/list results; key is also accepted. Optionally include comments, edit history, and linked relations.",
+            description: "Fetch a single issue with full content (description included). Use directly when you have an issue key (e.g. STR-28) — no prior search needed. Provide exactly one of `key` or `id`. Optionally include comments, edit history, and linked relations.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string", "description": "Issue ID from the Dispatch web URL or search/list results." },
-                    "key": { "type": "string", "description": "Issue key visible in Dispatch, such as PROJ-123." },
+                    "key": { "type": "string", "description": "Human-readable issue key, e.g. STR-28. Use this when you know the key." },
+                    "id": { "type": "string", "description": "Numeric issue ID from Dispatch URLs or search results. Use when you have the ID but not the key." },
                     "include": {
                         "type": "array",
                         "items": { "type": "string", "enum": ["comments", "history", "relations"] }
                     }
                 },
-                "oneOf": [
-                    { "required": ["id"] },
-                    { "required": ["key"] }
-                ],
                 "additionalProperties": false
             }),
         },
@@ -114,12 +110,12 @@ pub fn all() -> Vec<Tool> {
         },
         Tool {
             name: "update_issue",
-            description: "Partially update an issue by issue ID. Prefer the id from Dispatch web URLs or search/list results; key is also accepted. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
+            description: "Partially update an issue. Provide exactly one of `key` (e.g. STR-28) or `id`. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "id": { "type": "string", "description": "Issue ID from the Dispatch web URL or search/list results." },
-                    "key": { "type": "string", "description": "Issue key visible in Dispatch, such as PROJ-123." },
+                    "key": { "type": "string", "description": "Human-readable issue key, e.g. STR-28." },
+                    "id": { "type": "string", "description": "Numeric issue ID from Dispatch URLs or search results." },
                     "patch": {
                         "type": "object",
                         "properties": {
@@ -137,10 +133,6 @@ pub fn all() -> Vec<Tool> {
                     }
                 },
                 "required": ["patch"],
-                "oneOf": [
-                    { "required": ["id"] },
-                    { "required": ["key"] }
-                ],
                 "additionalProperties": false
             }),
         },
@@ -315,17 +307,11 @@ mod tests {
         assert_eq!(tools[6].name, "comment_on_issue");
         assert_eq!(tools[7].name, "relate_issues");
         assert_eq!(tools[8].name, "bulk_update_issues");
-        assert_eq!(tools[1].input_schema["oneOf"][0]["required"], json!(["id"]));
-        assert_eq!(
-            tools[1].input_schema["oneOf"][1]["required"],
-            json!(["key"])
-        );
+        assert_eq!(tools[1].input_schema["properties"]["key"]["type"], "string");
+        assert_eq!(tools[1].input_schema["properties"]["id"]["type"], "string");
         assert_eq!(tools[5].input_schema["required"], json!(["patch"]));
-        assert_eq!(tools[5].input_schema["oneOf"][0]["required"], json!(["id"]));
-        assert_eq!(
-            tools[5].input_schema["oneOf"][1]["required"],
-            json!(["key"])
-        );
+        assert_eq!(tools[5].input_schema["properties"]["key"]["type"], "string");
+        assert_eq!(tools[5].input_schema["properties"]["id"]["type"], "string");
     }
 
     #[test]

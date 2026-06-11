@@ -44,9 +44,8 @@ pub async fn list(identity: &McpIdentity, state: &AppState) -> Result<Value, Jso
     let resources: Vec<Value> = rows
         .into_iter()
         .map(|issue| {
-            let id = issue.id.to_string();
             json!({
-                "uri": format!("dispatch://issue/{id}"),
+                "uri": format!("dispatch://issue/{}", issue.key),
                 "name": issue.key.clone(),
                 "mimeType": "text/plain",
             })
