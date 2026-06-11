@@ -47,7 +47,7 @@ pub async fn list(identity: &McpIdentity, state: &AppState) -> Result<Value, Jso
             let id = issue.id.to_string();
             json!({
                 "uri": format!("dispatch://issue/{id}"),
-                "name": format!("Issue #{id}"),
+                "name": issue.key.clone(),
                 "mimeType": "text/plain",
             })
         })
