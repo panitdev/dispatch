@@ -11,7 +11,7 @@ use crate::{
     state::AppState,
 };
 
-use super::{iso8601, parse_snowflake_id, priority_output};
+use super::{iso8601, parse_snowflake_id};
 use crate::mcp::{
     auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
@@ -124,7 +124,7 @@ pub async fn call(
                 "id": issue.id.to_string(),
                 "title": issue.title,
                 "status": issue.status,
-                "priority": priority_output(issue.priority),
+                "priority": issue.priority,
                 "assignee_id": issue.assignee_id.map(|id| id.to_string()),
                 "updated_at": iso8601(issue.updated_at),
             })

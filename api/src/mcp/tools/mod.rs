@@ -1,12 +1,18 @@
-pub mod bulk_update_issues;
-pub mod comment_on_issue;
 pub mod create_issue;
-pub mod get_current_context;
+pub mod delete_issue;
 pub mod get_issue;
-pub mod get_workspace_metadata;
-pub mod relate_issues;
+pub mod get_project;
+pub mod list_projects;
 pub mod search_issues;
 pub mod update_issue;
+
+// Kept but not registered in the MCP surface
+pub mod bulk_update_issues;
+pub mod comment_on_issue;
+pub mod get_current_context;
+pub mod get_workspace_metadata;
+pub mod list_issues;
+pub mod relate_issues;
 
 use chrono::{DateTime, Utc};
 use diesel::result::Error as DieselError;
@@ -19,23 +25,135 @@ use super::protocol::{dispatch_error_result, JsonRpcError, Tool, INVALID_PARAMS}
 pub fn all() -> Vec<Tool> {
     vec![
         Tool {
-            name: "search_issues",
-            description: "Search and filter issues by structured criteria and optional full-text query. Returns lightweight summaries; no descriptions. Paginated with opaque cursor. Does not match issue keys (e.g. STR-28) — use get_issue with an issue identifier instead.",
+            name: "list_projects",
+            description: "List all available projects. Returns slug and name for each. Use when the target project slug is not yet known.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "get_project",
+            description: "Fetch a project by slug, including its label names. Call before create_issue to know which labels are valid for the project.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
-                    "query": { "type": "string", "description": "Full-text search across title and description only. Does not match issue keys." },
+                    "slug": { "type": "string", "description": "Project slug, e.g. \"strophe\"." }
+                },
+                "required": ["slug"],
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "get_issue",
+            description: "Fetch a single issue by key (e.g. STR-11). Returns full content including description and relations. Use directly when you have the key — no prior search needed.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "key": { "type": "string", "description": "Issue key, e.g. \"STR-11\"." }
+                },
+                "required": ["key"],
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "create_issue",
+            description: "Create a new issue. project_slug and title are required. Call get_project first to get valid label names.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project_slug":    { "type": "string" },
+                    "title":           { "type": "string" },
+                    "description":     { "type": "string" },
+                    "status":          { "type": "string", "description": "One of: backlog, todo, in_progress, done, cancelled. Defaults to backlog." },
+                    "priority":        { "type": "string", "description": "One of: no_priority, urgent, high, medium, low. Defaults to no_priority." },
+                    "labels":          { "type": "array", "items": { "type": "string" }, "description": "Label names from the project." },
+                    "assignee":        { "type": "string", "description": "Username or \"me\"." },
+                    "idempotency_key": { "type": "string", "description": "Unique key to safely retry on network failure." }
+                },
+                "required": ["project_slug", "title"],
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "update_issue",
+            description: "Partially update an issue by key. Omitted fields are unchanged. Explicit null clears nullable fields. labels replaces the full label set. relations is an additive delta.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "key": { "type": "string", "description": "Issue key, e.g. \"STR-11\"." },
+                    "patch": {
+                        "type": "object",
+                        "properties": {
+                            "title":       { "type": "string" },
+                            "description": { "type": ["string", "null"], "description": "String to replace, or null to clear." },
+                            "status":      { "type": "string", "description": "One of: backlog, todo, in_progress, done, cancelled." },
+                            "priority":    { "type": "string", "description": "One of: no_priority, urgent, high, medium, low." },
+                            "labels":      { "type": "array", "items": { "type": "string" }, "description": "Replaces the full label set." },
+                            "assignee":    { "type": ["string", "null"], "description": "Username, \"me\", or null to clear." },
+                            "project_slug":{ "type": "string", "description": "Move issue to another project (clears labels)." },
+                            "relations": {
+                                "type": "array",
+                                "description": "Additive delta. Each element adds or removes a relation.",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "type":      { "type": "string", "description": "blocks, blocked_by, related, or duplicate." },
+                                                "issue_key": { "type": "string" }
+                                            },
+                                            "required": ["type", "issue_key"],
+                                            "additionalProperties": false
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "remove": { "type": "string", "description": "Issue key to remove any relation to." }
+                                            },
+                                            "required": ["remove"],
+                                            "additionalProperties": false
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "additionalProperties": false,
+                        "minProperties": 1
+                    }
+                },
+                "required": ["key", "patch"],
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "delete_issue",
+            description: "Delete an issue by key. This is irreversible.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "key": { "type": "string", "description": "Issue key, e.g. \"STR-11\"." }
+                },
+                "required": ["key"],
+                "additionalProperties": false
+            }),
+        },
+        Tool {
+            name: "search_issues",
+            description: "Filter issues by project, status, label, or assignee. Returns issue summaries (no description). Does not match issue keys — use get_issue when the key is known.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "query": { "type": "string", "description": "Full-text search across title only." },
                     "filter": {
                         "type": "object",
                         "properties": {
-                            "project_id":    { "type": "string" },
-                            "team_id":       { "type": "string" },
-                            "state_id":      { "type": "array", "items": { "type": "string" } },
-                            "state_group":   { "type": "array", "items": { "type": "string", "description": "Allowed values: backlog, unstarted, started, completed, cancelled." } },
-                            "assignee_id":   { "type": "string", "description": "SnowflakeId or \"me\"." },
-                            "label_id":      { "type": "array", "items": { "type": "string" } },
-                            "priority":      { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 4 } },
-                            "parent_id":     { "type": "string" },
+                            "project_slug":  { "type": "string" },
+                            "status":        { "type": "array", "items": { "type": "string", "description": "backlog, todo, in_progress, done, or cancelled." } },
+                            "assignee":      { "type": "string", "description": "Username or \"me\"." },
+                            "labels":        { "type": "array", "items": { "type": "string" }, "description": "Label names; issues must have ALL listed labels." },
+                            "priority":      { "type": "array", "items": { "type": "string", "description": "no_priority, urgent, high, medium, or low." } },
                             "created_after": { "type": "string", "format": "date-time" },
                             "created_before":{ "type": "string", "format": "date-time" },
                             "updated_after": { "type": "string", "format": "date-time" },
@@ -49,157 +167,59 @@ pub fn all() -> Vec<Tool> {
                 "additionalProperties": false
             }),
         },
-        Tool {
-            name: "get_issue",
-            description: "Fetch a single issue with full content (description included). Use directly when you have an issue key (e.g. STR-28) or numeric issue ID — no prior search needed. Optionally include comments, edit history, and linked relations.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "identifier": { "type": "string", "description": "Issue identifier. Accepts either a numeric issue ID or a key like STR-28." },
-                    "include": {
-                        "type": "array",
-                        "items": { "type": "string", "description": "Allowed values: comments, history, relations." }
-                    }
-                },
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "get_workspace_metadata",
-            description: "Fetch reference data (projects, teams, labels, states, members) required to construct valid IDs for mutations. Call once per session; data is slow-changing.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "scope": {
-                        "type": "array",
-                        "items": { "type": "string", "description": "Allowed values: projects, teams, labels, states, members." }
-                    }
-                },
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "get_current_context",
-            description: "Return the authenticated user's identity, team memberships, and default project. Resolves the 'me' sentinel without a round-trip on every mutation.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "create_issue",
-            description: "Create a new issue. title and project_id are required. Provide an idempotency_key to safely retry on network failure.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "title":           { "type": "string" },
-                    "project_id":      { "type": "string" },
-                    "description":     { "type": "string" },
-                    "state_id":        { "type": "string" },
-                    "assignee_id":     { "type": "string" },
-                    "priority":        { "type": "integer", "minimum": 0, "maximum": 4 },
-                    "label_ids":       { "type": "array", "items": { "type": "string" } },
-                    "parent_id":       { "type": "string" },
-                    "idempotency_key": { "type": "string" }
-                },
-                "required": ["title", "project_id"],
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "update_issue",
-            description: "Partially update an issue identified by either a numeric issue ID or a key like STR-28. Omitted fields are unchanged. Explicit null clears nullable fields (description, assignee_id, parent_id). label_ids replaces the full label set.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "identifier": { "type": "string", "description": "Issue identifier. Accepts either a numeric issue ID or a key like STR-28." },
-                    "patch": {
-                        "type": "object",
-                        "properties": {
-                            "title":       { "type": "string" },
-                            "description": { "type": ["string", "null"], "description": "String to replace the description, or null to clear it." },
-                            "state_id":    { "type": "string" },
-                            "assignee_id": { "type": ["string", "null"], "description": "SnowflakeId, \"me\", or null to clear." },
-                            "priority":    { "type": "integer", "minimum": 0, "maximum": 4 },
-                            "label_ids":   { "type": "array", "items": { "type": "string" } },
-                            "project_id":  { "type": "string" },
-                            "parent_id":   { "type": ["string", "null"], "description": "Parent issue ID, or null to clear." }
-                        },
-                        "additionalProperties": false,
-                        "minProperties": 1
-                    }
-                },
-                "required": ["patch"],
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "comment_on_issue",
-            description: "Add a Markdown comment to an issue.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "id":   { "type": "string" },
-                    "body": { "type": "string", "description": "Markdown content." }
-                },
-                "required": ["id", "body"],
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "relate_issues",
-            description: "Create a typed relation between two issues. blocks/blocked_by are symmetric inverses stored as a single directed edge.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "from_id": { "type": "string" },
-                    "to_id":   { "type": "string" },
-                    "type":    { "type": "string", "description": "Allowed values: blocks, blocked_by, related, duplicate." }
-                },
-                "required": ["from_id", "to_id", "type"],
-                "additionalProperties": false
-            }),
-        },
-        Tool {
-            name: "bulk_update_issues",
-            description: "Apply a uniform patch to multiple issues by explicit ID list (max 50). Per-item result: partial failure does not abort remaining items. No filter-based bulk — always search first, then pass the IDs you intend to modify.",
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "ids": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "minItems": 1,
-                        "maxItems": 50
-                    },
-                    "patch": {
-                        "type": "object",
-                        "properties": {
-                            "state_id":    { "type": "string" },
-                            "assignee_id": { "type": ["string", "null"], "description": "SnowflakeId, \"me\", or null to clear." },
-                            "priority":    { "type": "integer", "minimum": 0, "maximum": 4 },
-                            "label_ids":   { "type": "array", "items": { "type": "string" } },
-                            "project_id":  { "type": "string" }
-                        },
-                        "additionalProperties": false,
-                        "minProperties": 1
-                    }
-                },
-                "required": ["ids", "patch"],
-                "additionalProperties": false
-            }),
-        },
     ]
 }
 
-// ---- Shared helpers ----
+// ---- Status and priority conversion ----
 
-pub(crate) fn parse_snowflake_id(value: &str, field: &str) -> Result<i64, JsonRpcError> {
-    value
-        .parse::<i64>()
-        .map_err(|_| JsonRpcError::new(INVALID_PARAMS, format!("invalid {field}: {value}")))
+/// Map a DB state group_name to the MCP status string exposed to agents.
+pub(crate) fn state_group_to_mcp_status(group: &str) -> &'static str {
+    match group {
+        "backlog" => "backlog",
+        "unstarted" => "todo",
+        "started" => "in_progress",
+        "completed" => "done",
+        "cancelled" => "cancelled",
+        _ => "backlog",
+    }
 }
+
+/// Map an MCP status string to the DB state group_name.
+pub(crate) fn mcp_status_to_state_group(status: &str) -> Option<&'static str> {
+    match status {
+        "backlog" => Some("backlog"),
+        "todo" => Some("unstarted"),
+        "in_progress" => Some("started"),
+        "done" => Some("completed"),
+        "cancelled" => Some("cancelled"),
+        _ => None,
+    }
+}
+
+/// Map a priority integer (0–4) to an MCP priority string.
+pub(crate) fn priority_to_str(p: i32) -> &'static str {
+    match p {
+        1 => "urgent",
+        2 => "high",
+        3 => "medium",
+        4 => "low",
+        _ => "no_priority",
+    }
+}
+
+/// Map an MCP priority string to a priority integer (0–4).
+pub(crate) fn str_to_priority(s: &str) -> Option<i32> {
+    match s {
+        "no_priority" => Some(0),
+        "urgent" => Some(1),
+        "high" => Some(2),
+        "medium" => Some(3),
+        "low" => Some(4),
+        _ => None,
+    }
+}
+
+// ---- Issue key parsing ----
 
 fn normalize_issue_key(value: &str) -> Option<String> {
     let (prefix, number) = value.rsplit_once('-')?;
@@ -272,6 +292,14 @@ pub(crate) fn parse_issue_identifier_value(
     ))
 }
 
+pub(crate) fn parse_snowflake_id(value: &str, field: &str) -> Result<i64, JsonRpcError> {
+    value
+        .parse::<i64>()
+        .map_err(|_| JsonRpcError::new(INVALID_PARAMS, format!("invalid {field}: {value}")))
+}
+
+// ---- Shared error helpers ----
+
 pub(crate) fn not_found_error(id: &str) -> Result<Value, JsonRpcError> {
     dispatch_error_result("NOT_FOUND", format!("not found: {id}"), None, None)
 }
@@ -309,6 +337,7 @@ pub(crate) fn iso8601(value: DateTime<Utc>) -> String {
     value.to_rfc3339()
 }
 
+/// Legacy: maps DB state group to internal DB status column value (not the MCP surface).
 pub(crate) fn status_from_state_group(group: &str) -> &'static str {
     match group {
         "backlog" => "draft",
@@ -326,28 +355,16 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn lists_nine_dispatch_tools_with_required_schemas() {
+    fn lists_seven_dispatch_tools() {
         let tools = all();
-
-        assert_eq!(tools.len(), 9);
-        assert_eq!(tools[0].name, "search_issues");
-        assert_eq!(tools[1].name, "get_issue");
-        assert_eq!(tools[2].name, "get_workspace_metadata");
-        assert_eq!(tools[3].name, "get_current_context");
-        assert_eq!(tools[4].name, "create_issue");
-        assert_eq!(tools[5].name, "update_issue");
-        assert_eq!(tools[6].name, "comment_on_issue");
-        assert_eq!(tools[7].name, "relate_issues");
-        assert_eq!(tools[8].name, "bulk_update_issues");
-        assert_eq!(
-            tools[1].input_schema["properties"]["identifier"]["type"],
-            "string"
-        );
-        assert_eq!(tools[5].input_schema["required"], json!(["patch"]));
-        assert_eq!(
-            tools[5].input_schema["properties"]["identifier"]["type"],
-            "string"
-        );
+        assert_eq!(tools.len(), 7);
+        assert_eq!(tools[0].name, "list_projects");
+        assert_eq!(tools[1].name, "get_project");
+        assert_eq!(tools[2].name, "get_issue");
+        assert_eq!(tools[3].name, "create_issue");
+        assert_eq!(tools[4].name, "update_issue");
+        assert_eq!(tools[5].name, "delete_issue");
+        assert_eq!(tools[6].name, "search_issues");
     }
 
     #[test]
@@ -385,11 +402,30 @@ mod tests {
     }
 
     #[test]
-    fn status_mapping_covers_all_groups() {
-        assert_eq!(status_from_state_group("backlog"), "draft");
-        assert_eq!(status_from_state_group("unstarted"), "next");
-        assert_eq!(status_from_state_group("started"), "doing");
-        assert_eq!(status_from_state_group("completed"), "done");
-        assert_eq!(status_from_state_group("cancelled"), "cancelled");
+    fn status_conversion_round_trips() {
+        for (status, group) in &[
+            ("backlog", "backlog"),
+            ("todo", "unstarted"),
+            ("in_progress", "started"),
+            ("done", "completed"),
+            ("cancelled", "cancelled"),
+        ] {
+            assert_eq!(mcp_status_to_state_group(status), Some(*group));
+            assert_eq!(state_group_to_mcp_status(group), *status);
+        }
+    }
+
+    #[test]
+    fn priority_conversion_round_trips() {
+        for (s, i) in &[
+            ("no_priority", 0),
+            ("urgent", 1),
+            ("high", 2),
+            ("medium", 3),
+            ("low", 4),
+        ] {
+            assert_eq!(str_to_priority(s), Some(*i));
+            assert_eq!(priority_to_str(*i), *s);
+        }
     }
 }

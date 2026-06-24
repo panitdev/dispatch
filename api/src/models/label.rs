@@ -3,7 +3,7 @@ use diesel::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{labels, states, teams};
+use crate::schema::{label_aliases, labels, states, teams};
 
 #[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = labels)]
@@ -63,6 +63,23 @@ impl From<Label> for LabelResponse {
             color: label.color,
         }
     }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = label_aliases)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct LabelAlias {
+    pub project_id: i64,
+    pub old_name: String,
+    pub current_name: String,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = label_aliases)]
+pub struct NewLabelAlias {
+    pub project_id: i64,
+    pub old_name: String,
+    pub current_name: String,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable)]

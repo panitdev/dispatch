@@ -7,15 +7,16 @@ use sha2::{Digest, Sha256};
 use crate::{
     models::issue::{IssueLabelRef, NewIssue, NewIssueHistoryEntry},
     schema::{
-        issue_history, issue_idempotency_keys, issue_label_refs, issues, labels, projects, states,
-        users,
+        issue_history, issue_idempotency_keys, issue_label_refs, issues, label_aliases, labels,
+        projects, states, users,
     },
     state::AppState,
 };
 
 use super::{
-    body_markdown, invalid_reference_error, iso8601, map_db_error, parse_snowflake_id,
-    status_from_state_group,
+    body_markdown, invalid_field_error, invalid_reference_error, iso8601, map_db_error,
+    mcp_status_to_state_group, priority_to_str, state_group_to_mcp_status, status_from_state_group,
+    str_to_priority,
 };
 use crate::mcp::{
     auth::McpIdentity,
@@ -23,20 +24,18 @@ use crate::mcp::{
         dispatch_error_result, json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS,
     },
 };
-use crate::models::label::State;
+use crate::models::{label::State, project::Project};
 
 #[derive(Deserialize)]
 struct CreateIssueArgs {
+    project_slug: String,
     title: String,
-    project_id: String,
     description: Option<String>,
-    state_id: Option<String>,
-    assignee_id: Option<String>,
+    status: Option<String>,
+    priority: Option<String>,
     #[serde(default)]
-    priority: i32,
-    #[serde(default)]
-    label_ids: Vec<String>,
-    parent_id: Option<String>,
+    labels: Vec<String>,
+    assignee: Option<String>,
     idempotency_key: Option<String>,
 }
 
@@ -49,49 +48,21 @@ pub async fn call(
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid create_issue arguments"))?;
 
     if args.title.trim().is_empty() {
-        return dispatch_error_result(
-            "INVALID_FIELD",
-            "title must not be empty",
-            Some("title"),
-            None,
-        );
-    }
-    if !(0..=4).contains(&args.priority) {
-        return dispatch_error_result(
-            "INVALID_FIELD",
-            "priority must be 0-4",
-            Some("priority"),
-            None,
-        );
+        return invalid_field_error("title", "title must not be empty");
     }
 
-    let project_id = parse_snowflake_id(&args.project_id, "project_id")?;
-    let parent_id: Option<i64> = args
-        .parent_id
-        .as_deref()
-        .map(|id| parse_snowflake_id(id, "parent_id"))
-        .transpose()?;
-    let assignee_id: Option<i64> = args
-        .assignee_id
-        .as_deref()
-        .map(|id| {
-            if id == "me" {
-                Ok(identity.user_id())
-            } else {
-                parse_snowflake_id(id, "assignee_id")
+    let priority: i32 = match &args.priority {
+        None => 0,
+        Some(s) => match str_to_priority(s) {
+            Some(p) => p,
+            None => {
+                return invalid_field_error(
+                    "priority",
+                    "priority must be one of: no_priority, urgent, high, medium, low",
+                )
             }
-        })
-        .transpose()?;
-    let state_id_arg: Option<i64> = args
-        .state_id
-        .as_deref()
-        .map(|id| parse_snowflake_id(id, "state_id"))
-        .transpose()?;
-    let label_ids: Vec<i64> = args
-        .label_ids
-        .iter()
-        .map(|id| parse_snowflake_id(id, "label_ids"))
-        .collect::<Result<Vec<_>, _>>()?;
+        },
+    };
 
     let mut conn = state
         .db
@@ -99,100 +70,88 @@ pub async fn call(
         .await
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
-    // Atomically increment issue_sequence and capture key + seq
-    let (project_key, seq): (String, i32) = diesel::update(projects::table.find(project_id))
-        .set(projects::issue_sequence.eq(projects::issue_sequence + 1))
-        .returning((projects::key, projects::issue_sequence))
-        .get_result(&mut conn)
+    // Resolve project by slug
+    let project: Project = match projects::table
+        .filter(projects::slug.eq(&args.project_slug))
+        .select(Project::as_select())
+        .first(&mut conn)
         .await
-        .map_err(|e| match e {
-            diesel::result::Error::NotFound => {
-                JsonRpcError::new(INVALID_PARAMS, "project not found")
-            }
-            other => map_db_error(other, None),
-        })?;
-
-    // Validate and resolve state_id
-    let resolved_state: Option<State> = if let Some(sid) = state_id_arg {
-        match states::table
-            .find(sid)
-            .select(State::as_select())
-            .first(&mut conn)
-            .await
-        {
-            Ok(s) => Some(s),
-            Err(diesel::result::Error::NotFound) => {
-                // Best-effort undo sequence increment
-                let _ = diesel::update(projects::table.find(project_id))
-                    .set(projects::issue_sequence.eq(projects::issue_sequence - 1))
-                    .execute(&mut conn)
-                    .await;
-                return invalid_reference_error("state_id", "state not found", None);
-            }
-            Err(e) => return Err(map_db_error(e, None)),
+    {
+        Ok(p) => p,
+        Err(diesel::result::Error::NotFound) => {
+            return invalid_reference_error(
+                "project_slug",
+                &format!("project not found: {}", args.project_slug),
+                None,
+            )
         }
-    } else {
-        // Default: first backlog state
-        states::table
-            .filter(states::group_name.eq("backlog"))
-            .order_by(states::id.asc())
-            .select(State::as_select())
-            .first(&mut conn)
-            .await
-            .ok()
+        Err(e) => return Err(map_db_error(e, None)),
+    };
+    let project_id = project.id;
+    let team_id = project.team_id.unwrap_or(1);
+
+    // Resolve assignee
+    let assignee_id: Option<i64> = match args.assignee.as_deref() {
+        None => None,
+        Some("me") => Some(identity.user_id()),
+        Some(username) => {
+            let uid: Option<i64> = users::table
+                .filter(users::username.eq(username))
+                .select(users::id)
+                .first(&mut conn)
+                .await
+                .optional()
+                .map_err(|e| map_db_error(e, None))?;
+            match uid {
+                Some(id) => Some(id),
+                None => {
+                    return invalid_reference_error(
+                        "assignee",
+                        &format!("user not found: {username}"),
+                        None,
+                    )
+                }
+            }
+        }
     };
 
-    // Validate assignee_id
-    if let Some(aid) = assignee_id {
-        let exists: i64 = users::table
-            .filter(users::id.eq(aid))
-            .count()
-            .get_result(&mut conn)
-            .await
-            .unwrap_or(0);
-        if exists == 0 {
-            return invalid_reference_error("assignee_id", "assignee not found", None);
-        }
-    }
+    // Resolve status to state
+    let state_group = match &args.status {
+        None => "backlog",
+        Some(s) => match mcp_status_to_state_group(s) {
+            Some(g) => g,
+            None => {
+                return invalid_field_error(
+                    "status",
+                    "status must be one of: backlog, todo, in_progress, done, cancelled",
+                )
+            }
+        },
+    };
 
-    // Validate label_ids
-    for &lid in &label_ids {
-        let exists: i64 = labels::table
-            .filter(labels::id.eq(lid))
-            .filter(labels::project_id.eq(project_id))
-            .count()
-            .get_result(&mut conn)
-            .await
-            .unwrap_or(0);
-        if exists == 0 {
-            return invalid_reference_error(
-                "label_ids",
-                &format!("label not found for project: {lid}"),
-                None,
-            );
-        }
-    }
+    let resolved_state: Option<State> = states::table
+        .filter(states::team_id.eq(team_id))
+        .filter(states::group_name.eq(state_group))
+        .order_by(states::id.asc())
+        .select(State::as_select())
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| map_db_error(e, None))?;
 
-    // Validate parent_id
-    if let Some(pid) = parent_id {
-        let exists: i64 = issues::table
-            .filter(issues::id.eq(pid))
-            .count()
-            .get_result(&mut conn)
-            .await
-            .unwrap_or(0);
-        if exists == 0 {
-            return invalid_reference_error("parent_id", "parent issue not found", None);
-        }
-    }
-
-    let status = resolved_state
+    let state_id = resolved_state.as_ref().map(|s| s.id);
+    let db_status = resolved_state
         .as_ref()
         .map(|s| status_from_state_group(&s.group_name))
         .unwrap_or("draft");
-    let state_id = resolved_state.as_ref().map(|s| s.id);
 
-    // Convert description markdown to blocks
+    // Resolve label names to IDs
+    let label_ids = match resolve_label_ids(&mut conn, project_id, &args.labels).await {
+        Ok(ids) => ids,
+        Err(err) => return err,
+    };
+
+    // Convert description to blocks
     let blocks = if let Some(desc) = &args.description {
         let id_gen = || state.next_id().to_string();
         match dispatch_issue_body_markdown::from_markdown_with_ids(desc, id_gen) {
@@ -203,6 +162,14 @@ pub async fn call(
         Value::Array(vec![])
     };
 
+    // Atomically increment issue_sequence
+    let (project_key, seq): (String, i32) = diesel::update(projects::table.find(project_id))
+        .set(projects::issue_sequence.eq(projects::issue_sequence + 1))
+        .returning((projects::key, projects::issue_sequence))
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| map_db_error(e, None))?;
+
     let issue_key = format!("{}-{}", project_key, seq);
 
     // Idempotency check
@@ -210,10 +177,10 @@ pub async fn call(
         let payload_str = format!(
             "{}|{}|{}|{}|{}",
             args.title,
-            args.project_id,
+            args.project_slug,
             args.description.as_deref().unwrap_or(""),
-            args.priority,
-            args.label_ids.join(",")
+            priority,
+            args.labels.join(",")
         );
         let payload_hash = Sha256::digest(payload_str.as_bytes()).to_vec();
 
@@ -230,6 +197,11 @@ pub async fn call(
 
         if let Some((existing_issue_id, existing_hash)) = existing {
             if existing_hash != payload_hash {
+                // Undo sequence increment before returning
+                let _ = diesel::update(projects::table.find(project_id))
+                    .set(projects::issue_sequence.eq(projects::issue_sequence - 1))
+                    .execute(&mut conn)
+                    .await;
                 return dispatch_error_result(
                     "CONFLICT",
                     "idempotency key already used with different payload",
@@ -237,26 +209,26 @@ pub async fn call(
                     None,
                 );
             }
-            // Same payload → return existing issue
-            let issue = issues::table
-                .find(existing_issue_id)
-                .select(crate::models::issue::Issue::as_select())
-                .first(&mut conn)
-                .await
-                .map_err(|e| map_db_error(e, None))?;
-            let desc_out = body_markdown(issue.blocks.clone()).ok();
-            return json_text_result(issue_to_json(&issue, desc_out, issue.state_id, &label_ids));
+            // Same payload → return existing issue as semantic response
+            let _ = diesel::update(projects::table.find(project_id))
+                .set(projects::issue_sequence.eq(projects::issue_sequence - 1))
+                .execute(&mut conn)
+                .await;
+            return return_issue_by_id(
+                existing_issue_id,
+                &project,
+                &mut conn,
+            )
+            .await;
         }
 
-        // New key — create and record
         let new_issue = do_insert_issue(
             state,
             &mut conn,
             project_id,
-            parent_id,
             args.title.clone(),
-            status.to_string(),
-            args.priority,
+            db_status.to_owned(),
+            priority,
             identity.user_id(),
             assignee_id,
             blocks.clone(),
@@ -278,8 +250,7 @@ pub async fn call(
         insert_label_refs(&mut conn, new_issue.id, &label_ids).await?;
         insert_creation_history(state, &mut conn, new_issue.id, identity.user_id()).await;
 
-        let desc_out = body_markdown(new_issue.blocks.clone()).ok();
-        return json_text_result(issue_to_json(&new_issue, desc_out, state_id, &label_ids));
+        return build_issue_response(&new_issue, &project, &label_ids, &mut conn).await;
     }
 
     // No idempotency key
@@ -287,10 +258,9 @@ pub async fn call(
         state,
         &mut conn,
         project_id,
-        parent_id,
         args.title.clone(),
-        status.to_string(),
-        args.priority,
+        db_status.to_owned(),
+        priority,
         identity.user_id(),
         assignee_id,
         blocks,
@@ -302,8 +272,67 @@ pub async fn call(
     insert_label_refs(&mut conn, new_issue.id, &label_ids).await?;
     insert_creation_history(state, &mut conn, new_issue.id, identity.user_id()).await;
 
-    let desc_out = body_markdown(new_issue.blocks.clone()).ok();
-    json_text_result(issue_to_json(&new_issue, desc_out, state_id, &label_ids))
+    build_issue_response(&new_issue, &project, &label_ids, &mut conn).await
+}
+
+// ---- Helpers ----
+
+async fn resolve_label_ids(
+    conn: &mut diesel_async::AsyncPgConnection,
+    project_id: i64,
+    names: &[String],
+) -> Result<Vec<i64>, Result<Value, JsonRpcError>> {
+    let mut ids = Vec::with_capacity(names.len());
+    for name in names {
+        let direct: Option<i64> = labels::table
+            .filter(labels::project_id.eq(project_id))
+            .filter(labels::name.eq(name))
+            .select(labels::id)
+            .first(conn)
+            .await
+            .optional()
+            .map_err(|e| Err::<Value, _>(map_db_error(e, None)))?;
+
+        if let Some(id) = direct {
+            ids.push(id);
+            continue;
+        }
+
+        // Try alias fallback
+        let alias_target: Option<String> = label_aliases::table
+            .filter(label_aliases::project_id.eq(project_id))
+            .filter(label_aliases::old_name.eq(name))
+            .select(label_aliases::current_name)
+            .first(conn)
+            .await
+            .optional()
+            .map_err(|e| Err::<Value, _>(map_db_error(e, None)))?;
+
+        if let Some(current_name) = alias_target {
+            let aliased_id: Option<i64> = labels::table
+                .filter(labels::project_id.eq(project_id))
+                .filter(labels::name.eq(&current_name))
+                .select(labels::id)
+                .first(conn)
+                .await
+                .optional()
+                .map_err(|e| Err::<Value, _>(map_db_error(e, None)))?;
+
+            if let Some(id) = aliased_id {
+                ids.push(id);
+                continue;
+            }
+        }
+
+        return Err(invalid_field_error(
+            "labels",
+            &format!(
+                "Label '{}' not found. Fetch project again to get current label names.",
+                name
+            ),
+        ));
+    }
+    Ok(ids)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -311,7 +340,6 @@ async fn do_insert_issue(
     state: &AppState,
     conn: &mut diesel_async::AsyncPgConnection,
     project_id: i64,
-    parent_id: Option<i64>,
     title: String,
     status: String,
     priority: i32,
@@ -325,7 +353,7 @@ async fn do_insert_issue(
         id: state.next_id(),
         key: key.to_owned(),
         project_id,
-        parent_id,
+        parent_id: None,
         title,
         status,
         priority,
@@ -334,7 +362,6 @@ async fn do_insert_issue(
         blocks,
         state_id,
     };
-
     diesel::insert_into(issues::table)
         .values(&new_issue)
         .get_result(conn)
@@ -386,71 +413,113 @@ async fn insert_creation_history(
         .await;
 }
 
-fn issue_to_json(
+async fn return_issue_by_id(
+    issue_id: i64,
+    project: &Project,
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<Value, JsonRpcError> {
+    let issue: crate::models::issue::Issue = issues::table
+        .find(issue_id)
+        .select(crate::models::issue::Issue::as_select())
+        .first(conn)
+        .await
+        .map_err(|e| map_db_error(e, None))?;
+
+    let label_refs: Vec<IssueLabelRef> = issue_label_refs::table
+        .filter(issue_label_refs::issue_id.eq(issue_id))
+        .select(IssueLabelRef::as_select())
+        .load(conn)
+        .await
+        .unwrap_or_default();
+    let label_ids: Vec<i64> = label_refs.iter().map(|r| r.label_id).collect();
+
+    build_issue_response(&issue, project, &label_ids, conn).await
+}
+
+async fn build_issue_response(
     issue: &crate::models::issue::Issue,
-    description: Option<String>,
-    state_id: Option<i64>,
+    project: &Project,
     label_ids: &[i64],
-) -> Value {
-    json!({
-        "id":          issue.id.to_string(),
+    conn: &mut diesel_async::AsyncPgConnection,
+) -> Result<Value, JsonRpcError> {
+    let description = body_markdown(issue.blocks.clone()).ok();
+
+    let status = if let Some(sid) = issue.state_id {
+        states::table
+            .filter(states::id.eq(sid))
+            .select(crate::models::label::State::as_select())
+            .first::<State>(conn)
+            .await
+            .ok()
+            .map(|s| state_group_to_mcp_status(&s.group_name).to_owned())
+            .unwrap_or_else(|| "backlog".to_owned())
+    } else {
+        "backlog".to_owned()
+    };
+
+    let label_names: Vec<String> = if label_ids.is_empty() {
+        vec![]
+    } else {
+        let label_rows: Vec<crate::models::label::Label> = labels::table
+            .filter(labels::id.eq_any(label_ids))
+            .select(crate::models::label::Label::as_select())
+            .load(conn)
+            .await
+            .unwrap_or_default();
+        let mut names: Vec<String> = label_rows.into_iter().map(|l| l.name).collect();
+        names.sort();
+        names
+    };
+
+    let assignee: Option<String> = if let Some(aid) = issue.assignee_id {
+        users::table
+            .filter(users::id.eq(aid))
+            .select(users::username)
+            .first::<String>(conn)
+            .await
+            .ok()
+    } else {
+        None
+    };
+
+    json_text_result(json!({
         "key":         issue.key,
         "title":       issue.title,
         "description": description,
-        "state":       state_id.map(|id| json!({ "id": id.to_string() })),
-        "priority":    issue.priority,
-        "assignee":    issue.assignee_id.map(|id| json!({ "id": id.to_string() })),
-        "project":     { "id": issue.project_id.to_string() },
-        "parent_id":   issue.parent_id.map(|id| id.to_string()),
-        "label_ids":   label_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+        "status":      status,
+        "priority":    priority_to_str(issue.priority),
+        "project":     { "slug": project.slug, "name": project.name },
+        "labels":      label_names,
+        "assignee":    assignee,
+        "relations":   Value::Array(vec![]),
         "created_at":  iso8601(issue.created_at),
         "updated_at":  iso8601(issue.updated_at),
-    })
+    }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
     use serde_json::json;
 
     #[test]
-    fn create_issue_args_require_title_and_project_id() {
+    fn create_issue_args_require_project_slug_and_title() {
         assert!(serde_json::from_value::<CreateIssueArgs>(json!({ "title": "T" })).is_err());
-        assert!(serde_json::from_value::<CreateIssueArgs>(json!({ "project_id": "1" })).is_err());
+        assert!(
+            serde_json::from_value::<CreateIssueArgs>(json!({ "project_slug": "strophe" }))
+                .is_err()
+        );
     }
 
     #[test]
-    fn create_issue_args_priority_defaults_to_zero() {
-        let args: CreateIssueArgs =
-            serde_json::from_value(json!({ "title": "T", "project_id": "1" })).unwrap();
-        assert_eq!(args.priority, 0);
-    }
-
-    #[test]
-    fn create_issue_response_includes_human_readable_key() {
-        let created_at = chrono::Utc.with_ymd_and_hms(2026, 6, 4, 10, 0, 0).unwrap();
-        let issue = crate::models::issue::Issue {
-            id: 101,
-            key: "DIS-15".to_owned(),
-            project_id: 301,
-            parent_id: None,
-            title: "Created issue".to_owned(),
-            status: "draft".to_owned(),
-            priority: 1,
-            author_id: 1,
-            assignee_id: None,
-            blocks: json!([]),
-            created_at,
-            updated_at: created_at,
-            state_id: Some(401),
-        };
-
-        let payload = issue_to_json(&issue, Some("body".to_owned()), issue.state_id, &[901]);
-
-        assert_eq!(payload["id"], "101");
-        assert_eq!(payload["key"], "DIS-15");
-        assert_eq!(payload["project"]["id"], "301");
-        assert_eq!(payload["label_ids"], json!(["901"]));
+    fn create_issue_args_defaults() {
+        let args: CreateIssueArgs = serde_json::from_value(json!({
+            "project_slug": "strophe",
+            "title": "Test"
+        }))
+        .unwrap();
+        assert!(args.status.is_none());
+        assert!(args.priority.is_none());
+        assert!(args.labels.is_empty());
     }
 }

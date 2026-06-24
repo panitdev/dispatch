@@ -5,18 +5,17 @@ use serde_json::{json, Value};
 
 use crate::{
     models::{
-        issue::{Issue, IssueComment, IssueHistoryEntry, IssueLabelRef, IssueRelation},
-        label::State,
-        user::User,
+        issue::{Issue, IssueLabelRef, IssueRelation},
+        label::{Label, State},
+        project::Project,
     },
-    schema::{
-        issue_comments, issue_history, issue_label_refs, issue_relations, issues, states, users,
-    },
+    schema::{issue_label_refs, issue_relations, issues, labels, projects, states, users},
     state::AppState,
 };
 
 use super::{
-    body_markdown, iso8601, map_db_error, not_found_error, parse_issue_identifier, IssueIdentifier,
+    body_markdown, iso8601, map_db_error, not_found_error, parse_issue_identifier,
+    priority_to_str, state_group_to_mcp_status, IssueIdentifier,
 };
 use crate::mcp::{
     auth::McpIdentity,
@@ -25,10 +24,7 @@ use crate::mcp::{
 
 #[derive(Deserialize)]
 struct GetIssueArgs {
-    #[serde(alias = "id", alias = "key")]
-    identifier: Option<String>,
-    #[serde(default)]
-    include: Vec<String>,
+    key: Option<String>,
 }
 
 pub async fn call(
@@ -38,21 +34,9 @@ pub async fn call(
 ) -> Result<Value, JsonRpcError> {
     let args: GetIssueArgs = serde_json::from_value(args)
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid get_issue arguments"))?;
-    let GetIssueArgs {
-        identifier,
-        include,
-    } = args;
-    let identifier = parse_issue_identifier(identifier, "identifier")?;
-    let identifier_label = identifier.label();
 
-    for value in &include {
-        if !matches!(value.as_str(), "comments" | "history" | "relations") {
-            return Err(JsonRpcError::new(
-                INVALID_PARAMS,
-                format!("invalid include: {value}"),
-            ));
-        }
-    }
+    let identifier = parse_issue_identifier(args.key, "key")?;
+    let identifier_label = identifier.label();
 
     let mut conn = state
         .db
@@ -61,9 +45,9 @@ pub async fn call(
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
     let mut query = issues::table.into_boxed();
-    query = match identifier {
-        IssueIdentifier::Id(id) => query.filter(issues::id.eq(id)),
-        IssueIdentifier::Key(key) => query.filter(issues::key.eq(key)),
+    query = match &identifier {
+        IssueIdentifier::Id(id) => query.filter(issues::id.eq(*id)),
+        IssueIdentifier::Key(key) => query.filter(issues::key.eq(key.as_str())),
     };
 
     let issue: Issue = match query.select(Issue::as_select()).first(&mut conn).await {
@@ -75,184 +59,138 @@ pub async fn call(
 
     let description = body_markdown(issue.blocks.clone()).ok();
 
-    let state_ref: Option<Value> = if let Some(sid) = issue.state_id {
+    // Resolve status from state
+    let status = if let Some(sid) = issue.state_id {
         states::table
             .filter(states::id.eq(sid))
             .select(State::as_select())
             .first(&mut conn)
             .await
             .ok()
-            .map(|s: State| {
-                json!({
-                    "id":    s.id.to_string(),
-                    "name":  s.name,
-                    "group": s.group_name,
-                })
-            })
+            .map(|s: State| state_group_to_mcp_status(&s.group_name).to_owned())
+            .unwrap_or_else(|| "backlog".to_owned())
     } else {
-        None
+        "backlog".to_owned()
     };
 
+    // Resolve project slug and name
+    let project: Project = projects::table
+        .find(issue.project_id)
+        .select(Project::as_select())
+        .first(&mut conn)
+        .await
+        .map_err(|e| map_db_error(e, None))?;
+
+    // Resolve label names
     let label_refs: Vec<IssueLabelRef> = issue_label_refs::table
         .filter(issue_label_refs::issue_id.eq(issue_id))
         .select(IssueLabelRef::as_select())
         .load(&mut conn)
         .await
         .unwrap_or_default();
-    let label_ids: Vec<String> = label_refs.iter().map(|r| r.label_id.to_string()).collect();
 
-    let include_comments = include.iter().any(|s| s == "comments");
-    let include_history = include.iter().any(|s| s == "history");
-    let include_relations = include.iter().any(|s| s == "relations");
-
-    let comments_val: Option<Value> = if include_comments {
-        let comments: Vec<IssueComment> = issue_comments::table
-            .filter(issue_comments::issue_id.eq(issue_id))
-            .order_by(issue_comments::created_at.asc())
-            .select(IssueComment::as_select())
-            .load(&mut conn)
-            .await
-            .map_err(|e| map_db_error(e, None))?;
-
-        let author_ids: Vec<i64> = comments.iter().map(|c| c.author_id).collect();
-        let authors: Vec<User> = if author_ids.is_empty() {
-            vec![]
-        } else {
-            users::table
-                .filter(users::id.eq_any(&author_ids))
-                .select(User::as_select())
-                .load(&mut conn)
-                .await
-                .unwrap_or_default()
-        };
-        let author_map: std::collections::HashMap<i64, &User> =
-            authors.iter().map(|u| (u.id, u)).collect();
-
-        Some(Value::Array(
-            comments
-                .iter()
-                .map(|c| {
-                    let author = author_map.get(&c.author_id);
-                    json!({
-                        "id":         c.id.to_string(),
-                        "author":     { "id": c.author_id.to_string(), "name": author.map(|u| u.username.as_str()).unwrap_or("") },
-                        "body":       c.body,
-                        "created_at": iso8601(c.created_at),
-                        "updated_at": iso8601(c.updated_at),
-                    })
-                })
-                .collect(),
-        ))
+    let label_names: Vec<String> = if label_refs.is_empty() {
+        vec![]
     } else {
-        None
-    };
-
-    let history_val: Option<Value> = if include_history {
-        let entries: Vec<IssueHistoryEntry> = issue_history::table
-            .filter(issue_history::issue_id.eq(issue_id))
-            .order_by(issue_history::created_at.asc())
-            .select(IssueHistoryEntry::as_select())
-            .load(&mut conn)
-            .await
-            .map_err(|e| map_db_error(e, None))?;
-
-        let actor_ids: Vec<i64> = entries.iter().map(|e| e.actor_id).collect();
-        let actors: Vec<User> = if actor_ids.is_empty() {
-            vec![]
-        } else {
-            users::table
-                .filter(users::id.eq_any(&actor_ids))
-                .select(User::as_select())
-                .load(&mut conn)
-                .await
-                .unwrap_or_default()
-        };
-        let actor_map: std::collections::HashMap<i64, &User> =
-            actors.iter().map(|u| (u.id, u)).collect();
-
-        Some(Value::Array(
-            entries
-                .iter()
-                .map(|e| {
-                    let actor = actor_map.get(&e.actor_id);
-                    json!({
-                        "id":         e.id.to_string(),
-                        "actor":      { "id": e.actor_id.to_string(), "name": actor.map(|u| u.username.as_str()).unwrap_or("") },
-                        "field":      e.field,
-                        "from":       e.from_value,
-                        "to":         e.to_value,
-                        "created_at": iso8601(e.created_at),
-                    })
-                })
-                .collect(),
-        ))
-    } else {
-        None
-    };
-
-    let relations_val: Option<Value> = if include_relations {
-        // Return all relations where this issue is from_id OR to_id
-        let as_source: Vec<IssueRelation> = issue_relations::table
-            .filter(issue_relations::issue_id.eq(issue_id))
+        let label_id_list: Vec<i64> = label_refs.iter().map(|r| r.label_id).collect();
+        let label_rows: Vec<Label> = labels::table
+            .filter(labels::id.eq_any(&label_id_list))
+            .select(Label::as_select())
             .load(&mut conn)
             .await
             .unwrap_or_default();
-        let as_target: Vec<IssueRelation> = issue_relations::table
-            .filter(issue_relations::related_issue_id.eq(issue_id))
-            .load(&mut conn)
-            .await
-            .unwrap_or_default();
+        let mut names: Vec<String> = label_rows.into_iter().map(|l| l.name).collect();
+        names.sort();
+        names
+    };
 
-        let mut rels: Vec<Value> = vec![];
-        // For source relations: from_id = issue, to_id = related
-        for r in &as_source {
-            rels.push(json!({
-                "id":      format!("{}-{}-{}", r.issue_id, r.related_issue_id, r.relation_type),
-                "from_id": r.issue_id.to_string(),
-                "to_id":   r.related_issue_id.to_string(),
-                "type":    r.relation_type,
-            }));
-        }
-        // For target relations (this issue is the target): expose the raw edge
-        for r in &as_target {
-            rels.push(json!({
-                "id":      format!("{}-{}-{}", r.issue_id, r.related_issue_id, r.relation_type),
-                "from_id": r.issue_id.to_string(),
-                "to_id":   r.related_issue_id.to_string(),
-                "type":    r.relation_type,
-            }));
-        }
-        Some(Value::Array(rels))
+    // Resolve assignee username
+    let assignee: Option<String> = if let Some(aid) = issue.assignee_id {
+        users::table
+            .filter(users::id.eq(aid))
+            .select(users::username)
+            .first::<String>(&mut conn)
+            .await
+            .ok()
     } else {
         None
     };
 
-    let mut result = json!({
-        "id":          issue.id.to_string(),
+    // Resolve relations with related issue keys and titles
+    let as_source: Vec<IssueRelation> = issue_relations::table
+        .filter(issue_relations::issue_id.eq(issue_id))
+        .load(&mut conn)
+        .await
+        .unwrap_or_default();
+    let as_target: Vec<IssueRelation> = issue_relations::table
+        .filter(issue_relations::related_issue_id.eq(issue_id))
+        .load(&mut conn)
+        .await
+        .unwrap_or_default();
+
+    // Collect all related issue IDs to batch-fetch their keys/titles
+    let mut related_ids: Vec<i64> = vec![];
+    for r in &as_source {
+        related_ids.push(r.related_issue_id);
+    }
+    for r in &as_target {
+        related_ids.push(r.issue_id);
+    }
+    related_ids.dedup();
+
+    let related_issues: Vec<(i64, String, String)> = if related_ids.is_empty() {
+        vec![]
+    } else {
+        issues::table
+            .filter(issues::id.eq_any(&related_ids))
+            .select((issues::id, issues::key, issues::title))
+            .load(&mut conn)
+            .await
+            .unwrap_or_default()
+    };
+    let related_map: std::collections::HashMap<i64, (&str, &str)> = related_issues
+        .iter()
+        .map(|(id, key, title)| (*id, (key.as_str(), title.as_str())))
+        .collect();
+
+    let mut relations: Vec<Value> = vec![];
+    for r in &as_source {
+        if let Some((key, title)) = related_map.get(&r.related_issue_id) {
+            relations.push(json!({
+                "type":      r.relation_type,
+                "issue_key": key,
+                "title":     title,
+            }));
+        }
+    }
+    for r in &as_target {
+        if let Some((key, title)) = related_map.get(&r.issue_id) {
+            // From this issue's perspective, the direction is reversed for "blocks"
+            let rel_type = match r.relation_type.as_str() {
+                "blocks" => "blocked_by",
+                other => other,
+            };
+            relations.push(json!({
+                "type":      rel_type,
+                "issue_key": key,
+                "title":     title,
+            }));
+        }
+    }
+
+    json_text_result(json!({
         "key":         issue.key,
         "title":       issue.title,
         "description": description,
-        "state":       state_ref,
-        "priority":    issue.priority,
-        "assignee":    issue.assignee_id.map(|id| json!({ "id": id.to_string() })),
-        "project":     { "id": issue.project_id.to_string() },
-        "parent_id":   issue.parent_id.map(|id| id.to_string()),
-        "label_ids":   label_ids,
+        "status":      status,
+        "priority":    priority_to_str(issue.priority),
+        "project":     { "slug": project.slug, "name": project.name },
+        "labels":      label_names,
+        "assignee":    assignee,
+        "relations":   relations,
         "created_at":  iso8601(issue.created_at),
         "updated_at":  iso8601(issue.updated_at),
-    });
-
-    if let Some(comments) = comments_val {
-        result["comments"] = comments;
-    }
-    if let Some(history) = history_val {
-        result["history"] = history;
-    }
-    if let Some(relations) = relations_val {
-        result["relations"] = relations;
-    }
-
-    json_text_result(result)
+    }))
 }
 
 #[cfg(test)]
@@ -261,27 +199,14 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn get_issue_args_accepts_identifier_and_legacy_aliases() {
-        let args: GetIssueArgs = serde_json::from_value(json!({ "identifier": "123" })).unwrap();
-        assert_eq!(args.identifier.as_deref(), Some("123"));
-
-        let args: GetIssueArgs = serde_json::from_value(json!({ "key": "DIS-1" })).unwrap();
-        assert_eq!(args.identifier.as_deref(), Some("DIS-1"));
+    fn get_issue_args_requires_key() {
+        let args: GetIssueArgs = serde_json::from_value(json!({ "key": "STR-11" })).unwrap();
+        assert_eq!(args.key.as_deref(), Some("STR-11"));
     }
 
     #[test]
-    fn get_issue_args_include_defaults_to_empty() {
-        let args: GetIssueArgs = serde_json::from_value(json!({ "identifier": "123" })).unwrap();
-        assert!(args.include.is_empty());
-    }
-
-    #[test]
-    fn get_issue_args_parses_include() {
-        let args: GetIssueArgs = serde_json::from_value(json!({
-            "identifier": "123",
-            "include": ["comments", "history"]
-        }))
-        .unwrap();
-        assert_eq!(args.include, vec!["comments", "history"]);
+    fn get_issue_args_key_absent_is_none() {
+        let args: GetIssueArgs = serde_json::from_value(json!({})).unwrap();
+        assert!(args.key.is_none());
     }
 }
