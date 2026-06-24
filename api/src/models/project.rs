@@ -17,6 +17,7 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub team_id: Option<i64>,
+    pub slug: String,
 }
 
 #[derive(Insertable)]
@@ -27,6 +28,7 @@ pub struct NewProject {
     pub name: String,
     pub color: String,
     pub parent_id: Option<i64>,
+    pub slug: String,
 }
 
 #[derive(AsChangeset, Default)]

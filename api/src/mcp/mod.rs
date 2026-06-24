@@ -145,21 +145,21 @@ async fn handle_tools_call(
         .map_err(|_| JsonRpcError::new(INVALID_PARAMS, "invalid tools/call params"))?;
 
     match params.name.as_str() {
-        "search_issues" => {
+        "list_projects" => {
             require_scope(identity, "dispatch:read")?;
-            tools::search_issues::call(identity, state, params.arguments).await
+            tools::list_projects::call(identity, state, params.arguments).await
+        }
+        "get_project" => {
+            require_scope(identity, "dispatch:read")?;
+            tools::get_project::call(identity, state, params.arguments).await
         }
         "get_issue" => {
             require_scope(identity, "dispatch:read")?;
             tools::get_issue::call(identity, state, params.arguments).await
         }
-        "get_workspace_metadata" => {
+        "search_issues" => {
             require_scope(identity, "dispatch:read")?;
-            tools::get_workspace_metadata::call(identity, state, params.arguments).await
-        }
-        "get_current_context" => {
-            require_scope(identity, "dispatch:read")?;
-            tools::get_current_context::call(identity, state, params.arguments).await
+            tools::search_issues::call(identity, state, params.arguments).await
         }
         "create_issue" => {
             require_scope(identity, "dispatch:write")?;
@@ -169,17 +169,9 @@ async fn handle_tools_call(
             require_scope(identity, "dispatch:write")?;
             tools::update_issue::call(identity, state, params.arguments).await
         }
-        "comment_on_issue" => {
+        "delete_issue" => {
             require_scope(identity, "dispatch:write")?;
-            tools::comment_on_issue::call(identity, state, params.arguments).await
-        }
-        "relate_issues" => {
-            require_scope(identity, "dispatch:write")?;
-            tools::relate_issues::call(identity, state, params.arguments).await
-        }
-        "bulk_update_issues" => {
-            require_scope(identity, "dispatch:write")?;
-            tools::bulk_update_issues::call(identity, state, params.arguments).await
+            tools::delete_issue::call(identity, state, params.arguments).await
         }
         _ => Err(JsonRpcError::new(INVALID_PARAMS, "unknown tool")),
     }

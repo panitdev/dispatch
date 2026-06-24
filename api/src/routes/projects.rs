@@ -12,15 +12,38 @@ use crate::{
     auth::kratos::KratosIdentity,
     error::{ApiResult, AppError},
     models::label::{
-        CreateLabelRequest, Label, LabelChangeset, LabelResponse, NewLabel, UpdateLabelRequest,
+        CreateLabelRequest, Label, LabelChangeset, LabelResponse, NewLabel,
+        NewLabelAlias, UpdateLabelRequest,
     },
     models::project::{
         CreateProjectRequest, NewProject, Project, ProjectChangeset, ProjectResponse,
         UpdateProjectRequest, build_project_tree,
     },
-    schema::{labels, projects},
+    schema::{label_aliases, labels, projects},
     state::AppState,
 };
+
+fn slugify(name: &str) -> String {
+    let mut result = String::new();
+    let mut last_was_dash = false;
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            result.push(c.to_ascii_lowercase());
+            last_was_dash = false;
+        } else if !last_was_dash && !result.is_empty() {
+            result.push('-');
+            last_was_dash = true;
+        }
+    }
+    if result.ends_with('-') {
+        result.pop();
+    }
+    if result.is_empty() {
+        "project".to_owned()
+    } else {
+        result
+    }
+}
 
 const DEFAULT_PROJECT_LABELS: &[(&str, &str)] = &[
     ("bug", "#e11d48"),
@@ -88,12 +111,14 @@ pub async fn create_project(
         })
         .transpose()?;
 
+    let slug = slugify(&body.name);
     let new_project = NewProject {
         id: state.next_id(),
         key: body.key.to_uppercase(),
         name: body.name,
         color: body.color,
         parent_id,
+        slug,
     };
 
     let mut conn = state.db.get().await?;
@@ -210,8 +235,21 @@ pub async fn update_project_label(
         return Err(AppError::BadRequest("no label changes provided".into()));
     }
 
-    let changeset = LabelChangeset { name, color };
     let mut conn = state.db.get().await?;
+
+    // Fetch current label to record old name for alias tracking
+    let current: Label = labels::table
+        .filter(labels::id.eq(label_id))
+        .filter(labels::project_id.eq(project_id))
+        .select(Label::as_select())
+        .first(&mut conn)
+        .await
+        .map_err(|_| AppError::NotFound)?;
+
+    let old_name = current.name.clone();
+    let new_name = name.clone();
+
+    let changeset = LabelChangeset { name, color };
     let updated: Label = diesel::update(
         labels::table
             .filter(labels::id.eq(label_id))
@@ -220,6 +258,23 @@ pub async fn update_project_label(
     .set(changeset)
     .get_result(&mut conn)
     .await?;
+
+    // Write alias on rename so MCP agents using old names still resolve correctly
+    if let Some(ref new_name_str) = new_name {
+        if *new_name_str != old_name {
+            diesel::insert_into(label_aliases::table)
+                .values(NewLabelAlias {
+                    project_id,
+                    old_name,
+                    current_name: new_name_str.clone(),
+                })
+                .on_conflict((label_aliases::project_id, label_aliases::old_name))
+                .do_update()
+                .set(label_aliases::current_name.eq(new_name_str.clone()))
+                .execute(&mut conn)
+                .await?;
+        }
+    }
 
     Ok(Json(LabelResponse::from(updated)))
 }

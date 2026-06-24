@@ -67,6 +67,15 @@ diesel::table! {
         created_at     -> Timestamptz,
         updated_at     -> Timestamptz,
         team_id        -> Nullable<Int8>,
+        slug           -> Varchar,
+    }
+}
+
+diesel::table! {
+    label_aliases (project_id, old_name) {
+        project_id   -> Int8,
+        old_name     -> Varchar,
+        current_name -> Varchar,
     }
 }
 
@@ -155,6 +164,7 @@ diesel::joinable!(states -> teams (team_id));
 diesel::joinable!(labels -> teams (team_id));
 diesel::joinable!(labels -> projects (project_id));
 diesel::joinable!(projects -> teams (team_id));
+diesel::joinable!(label_aliases -> projects (project_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     dispatch_api_keys,
@@ -162,6 +172,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     teams,
     states,
     labels,
+    label_aliases,
     projects,
     issues,
     issue_labels,

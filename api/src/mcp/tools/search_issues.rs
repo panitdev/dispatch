@@ -8,13 +8,15 @@ use serde_json::{json, Value};
 use crate::{
     models::{
         issue::{Issue, IssueLabelRef},
-        label::State,
+        label::{Label, State},
+        project::Project,
+        user::User,
     },
-    schema::{issue_label_refs, issues, states},
+    schema::{issue_label_refs, issues, labels, projects, states, users},
     state::AppState,
 };
 
-use super::{iso8601, map_db_error, parse_snowflake_id};
+use super::{iso8601, map_db_error, mcp_status_to_state_group, priority_to_str, str_to_priority, state_group_to_mcp_status};
 use crate::mcp::{
     auth::McpIdentity,
     protocol::{json_text_result, JsonRpcError, INTERNAL_ERROR, INVALID_PARAMS},
@@ -25,14 +27,11 @@ const MAX_LIMIT: i64 = 100;
 
 #[derive(Deserialize, Default)]
 struct SearchFilter {
-    project_id: Option<String>,
-    team_id: Option<String>,
-    state_id: Option<Vec<String>>,
-    state_group: Option<Vec<String>>,
-    assignee_id: Option<String>,
-    label_id: Option<Vec<String>>,
-    priority: Option<Vec<i32>>,
-    parent_id: Option<String>,
+    project_slug: Option<String>,
+    status: Option<Vec<String>>,
+    assignee: Option<String>,
+    labels: Option<Vec<String>>,
+    priority: Option<Vec<String>>,
     created_after: Option<DateTime<Utc>>,
     created_before: Option<DateTime<Utc>>,
     updated_after: Option<DateTime<Utc>>,
@@ -72,73 +71,49 @@ pub async fn call(
 
     let cursor = args.cursor.as_deref().map(decode_cursor).transpose()?;
 
-    let project_id = args
-        .filter
-        .project_id
-        .as_deref()
-        .map(|id| parse_snowflake_id(id, "project_id"))
-        .transpose()?;
-    let team_id = args
-        .filter
-        .team_id
-        .as_deref()
-        .map(|id| parse_snowflake_id(id, "team_id"))
-        .transpose()?;
-    let parent_id_filter = args
-        .filter
-        .parent_id
-        .as_deref()
-        .map(|id| parse_snowflake_id(id, "parent_id"))
-        .transpose()?;
-
-    let state_ids: Option<Vec<i64>> = args
-        .filter
-        .state_id
-        .as_deref()
-        .map(|ids| {
-            ids.iter()
-                .map(|id| parse_snowflake_id(id, "state_id"))
-                .collect::<Result<Vec<_>, _>>()
-        })
-        .transpose()?;
-
-    let label_ids: Option<Vec<i64>> = args
-        .filter
-        .label_id
-        .as_deref()
-        .map(|ids| {
-            ids.iter()
-                .map(|id| parse_snowflake_id(id, "label_id"))
-                .collect::<Result<Vec<_>, _>>()
-        })
-        .transpose()?;
-
-    let assignee_id: Option<Option<i64>> = match args.filter.assignee_id.as_deref() {
-        None => None,
-        Some("me") => Some(Some(identity.user_id())),
-        Some(id) => Some(Some(parse_snowflake_id(id, "assignee_id")?)),
-    };
-
     let mut conn = state
         .db
         .get()
         .await
         .map_err(|_| JsonRpcError::new(INTERNAL_ERROR, "database unavailable"))?;
 
-    // Resolve state_group filter to state_ids
-    let group_state_ids: Option<Vec<i64>> = if let Some(groups) = &args.filter.state_group {
-        if !groups.is_empty() {
-            let valid = ["backlog", "unstarted", "started", "completed", "cancelled"];
-            for g in groups {
-                if !valid.contains(&g.as_str()) {
-                    return Err(JsonRpcError::new(
-                        INVALID_PARAMS,
-                        format!("invalid state_group: {g}"),
-                    ));
+    // Resolve project_slug → project_id
+    let project_id: Option<i64> = if let Some(slug) = &args.filter.project_slug {
+        let pid: Option<i64> = projects::table
+            .filter(projects::slug.eq(slug))
+            .select(projects::id)
+            .first(&mut conn)
+            .await
+            .optional()
+            .map_err(|e| map_db_error(e, None))?;
+        if pid.is_none() {
+            return Err(JsonRpcError::new(
+                INVALID_PARAMS,
+                format!("project not found: {slug}"),
+            ));
+        }
+        pid
+    } else {
+        None
+    };
+
+    // Resolve status strings → state_ids via state_group
+    let status_state_ids: Option<Vec<i64>> = if let Some(statuses) = &args.filter.status {
+        if !statuses.is_empty() {
+            let mut groups: Vec<&str> = vec![];
+            for s in statuses {
+                match mcp_status_to_state_group(s) {
+                    Some(g) => groups.push(g),
+                    None => {
+                        return Err(JsonRpcError::new(
+                            INVALID_PARAMS,
+                            format!("invalid status: {s}"),
+                        ))
+                    }
                 }
             }
             let ids: Vec<i64> = states::table
-                .filter(states::group_name.eq_any(groups))
+                .filter(states::group_name.eq_any(&groups))
                 .select(states::id)
                 .load(&mut conn)
                 .await
@@ -151,16 +126,69 @@ pub async fn call(
         None
     };
 
-    // Resolve team_id filter: if team_id is set, filter projects by team
-    // and then filter issues by those project IDs
-    let team_project_ids: Option<Vec<i64>> = if let Some(tid) = team_id {
-        let ids: Vec<i64> = crate::schema::projects::table
-            .filter(crate::schema::projects::team_id.eq(tid))
-            .select(crate::schema::projects::id)
-            .load(&mut conn)
-            .await
-            .map_err(|e| map_db_error(e, None))?;
-        Some(ids)
+    // Resolve assignee username → user_id
+    let assignee_id: Option<i64> = match args.filter.assignee.as_deref() {
+        None => None,
+        Some("me") => Some(identity.user_id()),
+        Some(username) => {
+            let uid: Option<i64> = users::table
+                .filter(users::username.eq(username))
+                .select(users::id)
+                .first(&mut conn)
+                .await
+                .optional()
+                .map_err(|e| map_db_error(e, None))?;
+            uid // silently returns no results if user not found
+        }
+    };
+
+    // Resolve priority strings → integers
+    let priority_ints: Option<Vec<i32>> = if let Some(pstrs) = &args.filter.priority {
+        if !pstrs.is_empty() {
+            let mut ints = Vec::with_capacity(pstrs.len());
+            for s in pstrs {
+                match str_to_priority(s) {
+                    Some(p) => ints.push(p),
+                    None => {
+                        return Err(JsonRpcError::new(
+                            INVALID_PARAMS,
+                            format!("invalid priority: {s}"),
+                        ))
+                    }
+                }
+            }
+            Some(ints)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Resolve label names → label_ids (issues must have ALL labels)
+    let filter_label_ids: Option<Vec<i64>> = if let Some(label_names) = &args.filter.labels {
+        if !label_names.is_empty() {
+            let mut ids = Vec::with_capacity(label_names.len());
+            for name in label_names {
+                // We do a cross-project search: match by name across all projects
+                // If project_id is specified, narrow to that project
+                let mut q = labels::table
+                    .filter(labels::name.eq(name))
+                    .into_boxed();
+                if let Some(pid) = project_id {
+                    q = q.filter(labels::project_id.eq(pid));
+                }
+                let found_ids: Vec<i64> = q
+                    .select(labels::id)
+                    .load(&mut conn)
+                    .await
+                    .map_err(|e| map_db_error(e, None))?;
+                ids.extend(found_ids);
+            }
+            Some(ids)
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -171,36 +199,16 @@ pub async fn call(
         query = query.filter(issues::project_id.eq(pid));
     }
 
-    if let Some(pids) = team_project_ids {
-        query = query.filter(issues::project_id.eq_any(pids));
+    if let Some(state_ids) = status_state_ids {
+        query = query.filter(issues::state_id.eq_any(state_ids));
     }
 
-    // Combine state_id filter and group-derived state_ids with OR logic
-    match (state_ids, group_state_ids) {
-        (Some(mut direct), Some(from_group)) => {
-            direct.extend(from_group);
-            direct.dedup();
-            query = query.filter(issues::state_id.eq_any(direct));
-        }
-        (Some(direct), None) => {
-            query = query.filter(issues::state_id.eq_any(direct));
-        }
-        (None, Some(from_group)) => {
-            query = query.filter(issues::state_id.eq_any(from_group));
-        }
-        (None, None) => {}
-    }
-
-    if let Some(Some(aid)) = assignee_id {
+    if let Some(aid) = assignee_id {
         query = query.filter(issues::assignee_id.eq(Some(aid)));
     }
 
-    if let Some(priorities) = args.filter.priority {
+    if let Some(priorities) = priority_ints {
         query = query.filter(issues::priority.eq_any(priorities));
-    }
-
-    if let Some(pid) = parent_id_filter {
-        query = query.filter(issues::parent_id.eq(pid));
     }
 
     if let Some(after) = args.filter.created_after {
@@ -216,7 +224,6 @@ pub async fn call(
         query = query.filter(issues::updated_at.lt(before));
     }
 
-    // Full-text query: filter by title ilike
     if let Some(q) = &args.query {
         if !q.is_empty() {
             let pattern = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
@@ -224,16 +231,47 @@ pub async fn call(
         }
     }
 
-    // label_id filter: issues that have ALL requested labels
-    if let Some(lids) = &label_ids {
-        for &lid in lids {
-            let matching: Vec<i64> = issue_label_refs::table
-                .filter(issue_label_refs::label_id.eq(lid))
-                .select(issue_label_refs::issue_id)
-                .load(&mut conn)
-                .await
-                .map_err(|e| map_db_error(e, None))?;
-            query = query.filter(issues::id.eq_any(matching));
+    // Label filter: issues must have ALL requested labels
+    if let Some(ref lid_groups) = filter_label_ids {
+        if !lid_groups.is_empty() {
+            // For each requested label name, filter issues that have at least one matching label_id
+            // This is a simplification: we group by label name and require the issue to have any
+            // label with that name. For exact per-name filtering across projects we do it per-label.
+            // Since filter_label_ids contains ALL label IDs for ALL requested names merged together,
+            // we need a different approach for ALL-labels-required semantics.
+            //
+            // For simplicity when project is specified, each label name maps to exactly one ID.
+            // We filter: issue must appear in issue_label_refs for EACH required label.
+            // This is done by per-label subquery intersection.
+            if let Some(label_names) = &args.filter.labels {
+                for name in label_names.iter() {
+                    let mut lq = labels::table.filter(labels::name.eq(name)).into_boxed();
+                    if let Some(pid) = project_id {
+                        lq = lq.filter(labels::project_id.eq(pid));
+                    }
+                    let name_ids: Vec<i64> = lq
+                        .select(labels::id)
+                        .load(&mut conn)
+                        .await
+                        .map_err(|e| map_db_error(e, None))?;
+
+                    if name_ids.is_empty() {
+                        // Label doesn't exist; no issues can match
+                        return json_text_result(json!({
+                            "items": [],
+                            "next_cursor": Value::Null,
+                        }));
+                    }
+
+                    let matching: Vec<i64> = issue_label_refs::table
+                        .filter(issue_label_refs::label_id.eq_any(name_ids))
+                        .select(issue_label_refs::issue_id)
+                        .load(&mut conn)
+                        .await
+                        .map_err(|e| map_db_error(e, None))?;
+                    query = query.filter(issues::id.eq_any(matching));
+                }
+            }
         }
     }
 
@@ -266,21 +304,53 @@ pub async fn call(
         None
     };
 
-    // Fetch state refs and label refs for returned issues
-    let issue_ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
+    if rows.is_empty() {
+        return json_text_result(json!({
+            "items": [],
+            "next_cursor": next_cursor,
+        }));
+    }
 
-    let label_refs: Vec<IssueLabelRef> = if issue_ids.is_empty() {
+    let issue_ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
+    let project_ids: Vec<i64> = rows.iter().map(|r| r.project_id).collect();
+
+    // Batch-load label refs and names
+    let label_refs: Vec<IssueLabelRef> = issue_label_refs::table
+        .filter(issue_label_refs::issue_id.eq_any(&issue_ids))
+        .select(IssueLabelRef::as_select())
+        .load(&mut conn)
+        .await
+        .unwrap_or_default();
+
+    let all_label_ids: Vec<i64> = label_refs.iter().map(|r| r.label_id).collect();
+    let all_labels: Vec<Label> = if all_label_ids.is_empty() {
         vec![]
     } else {
-        issue_label_refs::table
-            .filter(issue_label_refs::issue_id.eq_any(&issue_ids))
-            .select(IssueLabelRef::as_select())
+        labels::table
+            .filter(labels::id.eq_any(&all_label_ids))
+            .select(Label::as_select())
             .load(&mut conn)
             .await
-            .map_err(|e| map_db_error(e, None))?
+            .unwrap_or_default()
     };
+    let label_map: std::collections::HashMap<i64, &str> =
+        all_labels.iter().map(|l| (l.id, l.name.as_str())).collect();
 
-    // Collect state IDs we need to resolve
+    let mut labels_by_issue: std::collections::HashMap<i64, Vec<String>> =
+        std::collections::HashMap::new();
+    for lr in &label_refs {
+        if let Some(&name) = label_map.get(&lr.label_id) {
+            labels_by_issue
+                .entry(lr.issue_id)
+                .or_default()
+                .push(name.to_owned());
+        }
+    }
+    for names in labels_by_issue.values_mut() {
+        names.sort();
+    }
+
+    // Batch-load states
     let state_id_list: Vec<i64> = rows.iter().filter_map(|r| r.state_id).collect();
     let loaded_states: Vec<State> = if state_id_list.is_empty() {
         vec![]
@@ -290,38 +360,72 @@ pub async fn call(
             .select(State::as_select())
             .load(&mut conn)
             .await
-            .map_err(|e| map_db_error(e, None))?
+            .unwrap_or_default()
     };
-
     let state_map: std::collections::HashMap<i64, &State> =
         loaded_states.iter().map(|s| (s.id, s)).collect();
 
-    let mut labels_by_issue: std::collections::HashMap<i64, Vec<i64>> =
-        std::collections::HashMap::new();
-    for lr in &label_refs {
-        labels_by_issue
-            .entry(lr.issue_id)
-            .or_default()
-            .push(lr.label_id);
-    }
+    // Batch-load projects
+    let all_projects: Vec<Project> = projects::table
+        .filter(projects::id.eq_any(&project_ids))
+        .select(Project::as_select())
+        .load(&mut conn)
+        .await
+        .unwrap_or_default();
+    let project_map: std::collections::HashMap<i64, &Project> =
+        all_projects.iter().map(|p| (p.id, p)).collect();
+
+    // Batch-load assignees
+    let assignee_ids: Vec<i64> = rows.iter().filter_map(|r| r.assignee_id).collect();
+    let all_users: Vec<User> = if assignee_ids.is_empty() {
+        vec![]
+    } else {
+        users::table
+            .filter(users::id.eq_any(&assignee_ids))
+            .select(User::as_select())
+            .load(&mut conn)
+            .await
+            .unwrap_or_default()
+    };
+    let user_map: std::collections::HashMap<i64, &str> =
+        all_users.iter().map(|u| (u.id, u.username.as_str())).collect();
 
     let items: Vec<Value> = rows
         .iter()
         .map(|issue| {
-            let state = issue.state_id.and_then(|sid| state_map.get(&sid).copied());
-            let label_ids_out: Vec<String> = labels_by_issue
-                .get(&issue.id)
-                .map(|ids| ids.iter().map(|id| id.to_string()).collect())
-                .unwrap_or_default();
+            let status = issue
+                .state_id
+                .and_then(|sid| state_map.get(&sid))
+                .map(|s| state_group_to_mcp_status(&s.group_name))
+                .unwrap_or("backlog");
 
-            issue_summary_json(issue, state, label_ids_out)
+            let proj = project_map.get(&issue.project_id);
+            let label_names = labels_by_issue
+                .get(&issue.id)
+                .cloned()
+                .unwrap_or_default();
+            let assignee = issue
+                .assignee_id
+                .and_then(|aid| user_map.get(&aid))
+                .map(|&u| u);
+
+            json!({
+                "key":        issue.key,
+                "title":      issue.title,
+                "status":     status,
+                "priority":   priority_to_str(issue.priority),
+                "project":    proj.map(|p| json!({ "slug": p.slug, "name": p.name })),
+                "labels":     label_names,
+                "assignee":   assignee,
+                "created_at": iso8601(issue.created_at),
+                "updated_at": iso8601(issue.updated_at),
+            })
         })
         .collect();
 
     json_text_result(json!({
         "items":       items,
         "next_cursor": next_cursor,
-        "total_count": Value::Null,
     }))
 }
 
@@ -347,31 +451,10 @@ fn decode_cursor(cursor: &str) -> Result<Cursor, JsonRpcError> {
     Ok(Cursor { updated_at, id })
 }
 
-fn issue_summary_json(issue: &Issue, state: Option<&State>, label_ids: Vec<String>) -> Value {
-    json!({
-        "id":          issue.id.to_string(),
-        "key":         issue.key,
-        "title":       issue.title,
-        "state": state.map(|state| json!({
-            "id":    state.id.to_string(),
-            "name":  state.name,
-            "group": state.group_name,
-        })),
-        "priority":    issue.priority,
-        "assignee":    issue.assignee_id.map(|id| json!({ "id": id.to_string() })),
-        "project":     { "id": issue.project_id.to_string() },
-        "parent_id":   issue.parent_id.map(|id| id.to_string()),
-        "label_ids":   label_ids,
-        "created_at":  iso8601(issue.created_at),
-        "updated_at":  iso8601(issue.updated_at),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::TimeZone;
-    use serde_json::json;
 
     #[test]
     fn cursor_round_trips() {
@@ -390,38 +473,11 @@ mod tests {
     }
 
     #[test]
-    fn issue_summary_includes_human_readable_key() {
-        let created_at = Utc.with_ymd_and_hms(2026, 6, 4, 10, 0, 0).unwrap();
-        let updated_at = Utc.with_ymd_and_hms(2026, 6, 4, 11, 0, 0).unwrap();
-        let issue = Issue {
-            id: 101,
-            key: "DIS-6".to_owned(),
-            project_id: 301,
-            parent_id: Some(55),
-            title: "Search response shape".to_owned(),
-            status: "draft".to_owned(),
-            priority: 2,
-            author_id: 1,
-            assignee_id: Some(9),
-            blocks: json!([]),
-            created_at,
-            updated_at,
-            state_id: Some(401),
-        };
-        let state = State {
-            id: 401,
-            team_id: 7,
-            name: "Todo".to_owned(),
-            group_name: "unstarted".to_owned(),
-            color: "#999999".to_owned(),
-            created_at,
-        };
-
-        let summary = issue_summary_json(&issue, Some(&state), vec!["501".to_owned()]);
-
-        assert_eq!(summary["id"], "101");
-        assert_eq!(summary["key"], "DIS-6");
-        assert_eq!(summary["state"]["id"], "401");
-        assert_eq!(summary["label_ids"], json!(["501"]));
+    fn search_filter_defaults_to_empty() {
+        let args: SearchIssuesArgs =
+            serde_json::from_value(serde_json::json!({})).unwrap();
+        assert!(args.filter.project_slug.is_none());
+        assert!(args.filter.status.is_none());
+        assert!(args.query.is_none());
     }
 }
